@@ -35,17 +35,21 @@ def method(name, *args, **kwargs):
     return lambda obj: getattr(obj, name)(*args, **kwargs)
 
 
-def andmap(predicate, collection):
+def andmap(predicate, collection, *collections):
     """Map predicate and reduce with and, short circuiting."""
+    iters = map(iter, collections)
     for elem in collection:
-        if not predicate(elem):
+        elems = map(next, iters)
+        if not predicate(elem, *elems):
             return False
     return True
 
 
-def ormap(predicate, collection):
+def ormap(predicate, collection, *collections):
     """Map predicate and reduce with or, short circuiting."""
+    iters = map(iter, collections)
     for elem in collection:
-        if predicate(elem):
+        elems = map(next, iters)
+        if predicate(elem, *elems):
             return True
     return False
