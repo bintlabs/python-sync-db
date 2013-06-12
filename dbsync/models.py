@@ -3,16 +3,13 @@ Internal model used to keep track of versions and operations.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import relationship, validates
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
-
-Session = sessionmaker()
 
 
 #: Database tables prefix.
 tablename_prefix = "sync_"
-
 
 class PrefixTables(DeclarativeMeta):
     def __init__(cls, classname, bases, dict_):
@@ -61,10 +58,20 @@ class Operation(Base):
     content_type_id = Column(
         Integer, ForeignKey(ContentType.__tablename__ + ".content_type_id"))
     command = Column(String(1))
+    command_options = ('i', 'u', 'd')
     order = Column(Integer, primary_key=True)
 
     version = relationship(Version, backref="operations")
     content_type = relationship(ContentType, backref="operations")
+
+    @validates('command')
+    def validate_command(self, key, command):
+        assert command in self.command_options
+        return command
+
+    def __repr__(self):
+        return u"<Operation row_id: {0}, content_type: {1}, command: {2}>".\
+            format(self.row_id, self.content_type_id, self.command)
 
 
 class Node(Base):

@@ -6,19 +6,26 @@ client can also request a registry key if it hasn't been given one
 yet.
 """
 
+import logging
+
 from sqlalchemy import event
 
-from dbsync.core import synched_models, listening, toggle_listening
-from dbsync.models import Session, Operation, ContentType
+from dbsync import core
+from dbsync.models import Operation, ContentType
 
 
 def make_listener(operation):
     """Builds a listener for the given operation (i, u, d)."""
     def listener(mapper, connection, target):
-        if not listening: return
-        session = Session(bind=connection)
+        if not core.listening: return
+        session = core.Session()
+        tname = mapper.mapped_table.name
         ct = session.query(ContentType).\
-            filter(ContentType.table_name == mapper.mapped_table.name).one()
+            filter(ContentType.table_name == tname).first()
+        if ct is None:
+            logging.error("you must register a content type for {0}"\
+                              "to keep track of operations".format(tname))
+            return
         pk = getattr(target, mapper.primary_key[0].name)
         op = Operation(
             row_id=pk,
@@ -35,7 +42,7 @@ def track(model):
 
     It can be used as a class decorator. This will also install
     listeners to keep track of CUD operations for the given model."""
-    synched_models.append(model)
+    core.synched_models.append(model)
     event.listen(model, 'after_insert', make_listener('i'))
     event.listen(model, 'after_update', make_listener('u'))
     event.listen(model, 'after_delete', make_listener('d'))
