@@ -1,3 +1,4 @@
+import logging
 from nose.tools import *
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
 from sqlalchemy.orm import relationship, sessionmaker
@@ -6,7 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from dbsync import models, core, client
 
 
-engine = create_engine("sqlite://", echo=True)
+engine = create_engine("sqlite://")
 Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
@@ -58,11 +59,11 @@ def test_tracking():
     b3 = B(name="third b", a=a2)
     session = Session()
     session.add_all([a1, a2, b1, b2, b3])
+    session.flush()
+    a1.name = "first a modified"
+    b2.a = a2
+    session.delete(b3)
     session.commit()
-    assert session.query(A).count() == 2, session.query(A).count()
-    assert session.query(B).count() == 3
-    query = session.query(models.Operation)
-    assert query.count() == 5, query.count()
-    for op in query:
-        print op
-        assert op.command == 'i'
+    for op in session.query(models.Operation):
+        logging.info(op)
+    assert False
