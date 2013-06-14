@@ -18,6 +18,14 @@ def const(value):
     return lambda *args, **kwargs: value
 
 
+def fst(pair):
+    return pair[0]
+
+
+def snd(pair):
+    return pair[1]
+
+
 def maybe(value, fn=identity, default=""):
     """``if value is None: ...`` more compressed."""
     if value is None:
