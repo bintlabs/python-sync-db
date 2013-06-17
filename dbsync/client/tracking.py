@@ -38,7 +38,9 @@ def track(model):
 
     It can be used as a class decorator. This will also install
     listeners to keep track of CUD operations for the given model."""
-    core.synched_models.append(model)
+    if model.__name__ in core.synched_models:
+        return model
+    core.synched_models.update({model.__name__: model})
     event.listen(model, 'after_insert', make_listener('i'))
     event.listen(model, 'after_update', make_listener('u'))
     event.listen(model, 'after_delete', make_listener('d'))

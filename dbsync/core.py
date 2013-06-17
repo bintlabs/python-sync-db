@@ -48,8 +48,8 @@ def get_engine():
     return _engine
 
 
-#: List of classes marked for synchronization and change tracking.
-synched_models = []
+#: Set of classes marked for synchronization and change tracking.
+synched_models = {}
 
 
 #: Toggled variable used to disable listening to operations momentarily.
@@ -70,7 +70,7 @@ def generate_content_types():
     Inserts content types into the internal table used to describe
     operations. *connectable* is a SQLAlchemy Connectable object."""
     session = Session()
-    for model in synched_models:
+    for model in synched_models.values():
         tname = model.__table__.name
         if session.query(ContentType).\
                 filter(ContentType.table_name == tname).count() == 0:

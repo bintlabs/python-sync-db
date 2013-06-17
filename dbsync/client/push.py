@@ -16,7 +16,7 @@ def compress():
     operations that would otherwise bloat the message.
 
     This procedure is called internally before the 'push' request
-    happens."""
+    happens, and before the local 'merge' happens."""
     session = core.Session()
     unversioned = session.query(Operation).\
         filter(Operation.version_id == None).order_by(Operation.order.desc())
