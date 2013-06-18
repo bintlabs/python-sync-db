@@ -2,6 +2,8 @@
 Generic functions for repeating patterns.
 """
 
+from itertools import imap, ifilter
+
 
 def begin(arg, *args):
     """Sequencing, for use in lambdas."""
@@ -26,6 +28,22 @@ def snd(pair):
     return pair[1]
 
 
+def partition(predicate, collection):
+    """Splits the collection according to the predicate.
+
+    Returns a pair of (true-tested, false-tested). Evaluating it is
+    equivalent to evaluating ``(filter(predicate, collection),
+    filter(lambda e: not predicate(e), collection))``"""
+    positives = []
+    negatives = []
+    for e in collection:
+        if predicate(e):
+            positives.append(e)
+        else:
+            negatives.append(e)
+    return (positives, negatives)
+
+
 def maybe(value, fn=identity, default=""):
     """``if value is None: ...`` more compressed."""
     if value is None:
@@ -40,17 +58,35 @@ class Function(object):
     def __call__(self, obj):
         return self.fn(obj)
     def __eq__(self, other):
-        return Function(lambda obj: self.fn(obj) == other)
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) == other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) == other)
     def __lt__(self, other):
-        return Function(lambda obj: self.fn(obj) < other)
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) < other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) < other)
     def __le__(self, other):
-        return Function(lambda obj: self.fn(obj) <= other)
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) <= other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) <= other)
     def __ne__(self, other):
-        return Function(lambda obj: self.fn(obj) != other)
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) != other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) != other)
     def __gt__(self, other):
-        return Function(lambda obj: self.fn(obj) > other)
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) > other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) > other)
     def __ge__(self, other):
-        return Function(lambda obj: self.fn(obj) >= other)
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) >= other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) >= other)
 
 
 def attr(name):

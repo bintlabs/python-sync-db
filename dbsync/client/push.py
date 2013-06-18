@@ -2,8 +2,6 @@
 Push message and related operations.
 """
 
-from itertools import imap, ifilter
-
 from dbsync.lang import *
 from dbsync import core
 from dbsync.models import Operation
