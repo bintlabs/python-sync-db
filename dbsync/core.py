@@ -7,6 +7,7 @@ import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from dbsync.lang import *
 from dbsync.models import Base, ContentType, Operation
 
 
@@ -70,7 +71,7 @@ def generate_content_types():
     Inserts content types into the internal table used to describe
     operations. *connectable* is a SQLAlchemy Connectable object."""
     session = Session()
-    for model in synched_models.values():
+    for _, model in sorted(synched_models.items(), key=fst):
         tname = model.__table__.name
         if session.query(ContentType).\
                 filter(ContentType.table_name == tname).count() == 0:
