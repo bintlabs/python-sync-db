@@ -2,7 +2,8 @@
 Generic functions for repeating patterns.
 """
 
-from itertools import imap, ifilter
+from itertools import imap, ifilter, starmap
+from functools import partial
 
 
 def begin(arg, *args):

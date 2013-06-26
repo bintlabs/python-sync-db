@@ -75,7 +75,7 @@ def generate_content_types():
         tname = model.__table__.name
         if session.query(ContentType).\
                 filter(ContentType.table_name == tname).count() == 0:
-            session.add(ContentType(table_name=tname))
+            session.add(ContentType(table_name=tname, model_name=model.__name__))
     session.commit()
 
 
@@ -86,7 +86,7 @@ def is_synched(obj):
     (i.e. the content type doesn't exist)."""
     session = Session()
     ct = session.query(ContentType).\
-        filter(ContentType.table_name == obj.__class__.__table__.name).first()
+        filter(ContentType.model_name == obj.__class__.__name__).first()
     if ct is None:
         raise TypeError("the given object of class {0} isn't being tracked".\
                             format(obj.__class__.__name__))

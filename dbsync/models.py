@@ -28,6 +28,7 @@ class ContentType(Base):
 
     content_type_id = Column(Integer, primary_key=True)
     table_name = Column(String)
+    model_name = Column(String)
 
 
 class Version(Base):
