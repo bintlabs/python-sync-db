@@ -1,24 +1,38 @@
 """
 Base functionality for synchronization messages.
-"""    
+"""
 
 from dbsync.lang import *
 from dbsync.core import synched_models
 
 
 class ObjectType(object):
-    """Represents a tracked object."""
+    """Wrapper for tracked objects."""
 
-    def __init__(self, mname, **kwargs):
+    def __init__(self, mname, pk, **kwargs):
         self.__model_name__ = mname
+        self.__pk__ = pk
         self.__keys__ = []
         for k, v in kwargs.iteritems():
-            if k != "__model_name__" and k != "__keys__":
+            if k != "__model_name__" and k != "__pk__" and k != "__keys__":
                 setattr(self, k, v)
                 self.__keys__.append(k)
 
     def __repr__(self):
-        return u"<ObjectType {0}>".format(self.__model_name__)
+        return u"<ObjectType {0} pk: {1}>".format(
+            self.__model_name__, self.__pk__)
+
+    def __eq__(self, other):
+        if not isinstance(other, ObjectType):
+            raise TypeError("not an instance of ObjectType")
+        return self.__model_name__ == other.__model_name__ and \
+            self.__pk__ == other.__pk__
+
+    def __hash__(self):
+        return self.__pk__
+
+    def to_dict(self):
+        return dict((k, getattr(self, k)) for k in self.__keys__)
 
     def to_mapped_object(self):
         model = synched_models.get(self.__model_name__, None)

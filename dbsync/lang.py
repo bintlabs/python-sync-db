@@ -3,7 +3,7 @@ Generic functions for repeating patterns.
 """
 
 from itertools import imap, ifilter, starmap
-from functools import partial
+from functools import partial, wraps
 
 
 def begin(arg, *args):
@@ -50,6 +50,14 @@ def maybe(value, fn=identity, default=""):
     if value is None:
         return default
     return fn(value)
+
+
+def guard(f):
+    """Propagate nothingness in a function of one argument."""
+    @wraps(f)
+    def g(x):
+        return maybe(x, f, None)
+    return f
 
 
 class Function(object):
