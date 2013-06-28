@@ -117,13 +117,29 @@ class PullMessage(object):
         self.payload[classname] = obj_set
         return self
 
-    def add_operation(self, op, include_objects=True):
+    def add_operation(self, op, include_object=True, session=None):
         """Adds an operation to the message.
 
-        If *include_objects* is ``True`` (the default), all required
-        objects for will be added to the message."""
-        # TODO add_operation
+        If *include_object* is ``True`` (the default), the required
+        object for it to be performed will be added to the message."""
+        mname = op.content_type.model_name
+        model = synched_models.get(mname, None)
+        if model is None:
+            raise ValueError("operation linked to a model "\
+                                 "that's not being tracked: %s" % mname)
         self.operations.append(op)
+        if op.command == 'd' or not include_object:
+            return self # can't include the object for delete commands
+        closeit = session is None
+        session = session if not closeit else Session()
+        obj = session.query(model).\
+            filter_by(**{get_pk(model): op.row_id}).first()
+        if obj is None:
+            raise ValueError("operation linked to an object "\
+                                 "not present in database: %s" % op)
+        self.add_object(obj)
+        if closeit:
+            session.close()
         return self
 
     def add_version(self, v, include_operations=True, include_objects=True):
@@ -133,5 +149,12 @@ class PullMessage(object):
         operations matching the given version. If *include_objects* is
         ``True``, it also will add the objects required by those
         operations. Both are ``True`` by default."""
-        # TODO add_version
-        pass
+        self.versions.append(v)
+        if not include_operations:
+            return self
+        session = None if include_objects else Session()
+        for op in v.operations:
+            self.add_operation(
+                op, include_object=include_objects, session=session)
+        session.close()
+        return self

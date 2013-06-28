@@ -57,7 +57,7 @@ def guard(f):
     @wraps(f)
     def g(x):
         return maybe(x, f, None)
-    return f
+    return g
 
 
 class Function(object):

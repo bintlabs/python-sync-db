@@ -3,7 +3,7 @@ Internal model used to keep track of versions and operations.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship, validates
+from sqlalchemy.orm import relationship, backref, validates
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
@@ -62,7 +62,7 @@ class Operation(Base):
     command_options = ('i', 'u', 'd')
     order = Column(Integer, primary_key=True)
 
-    version = relationship(Version, backref="operations")
+    version = relationship(Version, backref=backref("operations", lazy="joined"))
     content_type = relationship(ContentType, backref="operations")
 
     @validates('command')
