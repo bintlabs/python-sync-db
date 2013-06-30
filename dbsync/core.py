@@ -2,13 +2,10 @@
 Common functionality for model synchronization and version tracking.
 """
 
-import logging
-
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from dbsync.lang import *
-from dbsync.models import Base, ContentType, Operation
+from dbsync.models import ContentType, Operation
 
 
 _SessionClass = sessionmaker()
@@ -19,33 +16,18 @@ Session = lambda: _SessionClass(bind=get_engine())
 _engine = None
 
 
-def connect_engine(url=None):
-    """Creates a new engine for all purposes in this library."""
-    global _engine
-    if url is None:
-        logging.warning(
-            "Database engine wasn't connected. "\
-                "The model will use an in-memory database to operate.")
-        url = "sqlite://"
-        _engine = create_engine(url)
-        Base.metadata.create_all(_engine)
-    else:
-        _engine = create_engine(url)
-
-
 def set_engine(engine):
-    """Sets the engine to be used by the library."""
+    """Sets the SA engine to be used by the library.
+
+    It should point to the same database as the application's."""
     global _engine
     _engine = engine
 
 
 def get_engine():
-    """Returns a defined (not None) engine.
-
-    If the global engine hasn't been connected yet, it will create a
-    default one."""
+    """Returns a defined (not None) engine."""
     if _engine is None:
-        connect_engine()
+        raise ValueError("database engine hasn't been set yet")
     return _engine
 
 
@@ -60,7 +42,8 @@ listening = True
 def toggle_listening(enabled=None):
     """Change the listening state.
 
-    If set to ``False``, no operations will be registered."""
+    If set to ``False``, no operations will be registered. This is
+    used in the conflict resolution phase."""
     global listening
     listening = enabled if enabled is not None else not listening
 
@@ -69,7 +52,7 @@ def generate_content_types():
     """Fills the content type table.
 
     Inserts content types into the internal table used to describe
-    operations. *connectable* is a SQLAlchemy Connectable object."""
+    operations."""
     session = Session()
     for _, model in sorted(synched_models.items(), key=fst):
         tname = model.__table__.name
