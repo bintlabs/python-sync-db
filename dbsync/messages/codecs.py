@@ -6,6 +6,7 @@ import datetime
 
 from sqlalchemy import types
 from dbsync.lang import *
+from dbsync.utils import types_dict
 
 
 def _encode_table(type_):
@@ -21,6 +22,13 @@ def _encode_table(type_):
 
 #: Encodes a python value into a JSON-friendly python value.
 encode = lambda t: guard(_encode_table(t))
+
+def encode_dict(class_):
+    """Returns a function that transforms a dictionary, mapping the
+    types to simpler ones, according to the given mapped class."""
+    types = types_dict(class_)
+    encodings = dict((k, encode(t)) for k, t in types.iteritems())
+    return lambda dict_: dict((k, encodings[k](v)) for k, v in dict_.iteritems())
 
 
 def _decode_table(type_):
@@ -38,3 +46,10 @@ def _decode_table(type_):
 
 #: Decodes a value coming from a JSON string into a richer python value.
 decode = lambda t: guard(_encode_table(t))
+
+def decode_dict(class_):
+    """Returns a function that transforms a dictionary, mapping the
+    types to richer ones, according to the given mapped class."""
+    types = types_dict(class_)
+    decodings = dict((k, decode(t)) for k, t in types.iteritems())
+    return lambda dict_: dict((k, decodings[k](v)) for k, v in dict_.iteritems())

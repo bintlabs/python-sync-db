@@ -5,29 +5,13 @@ Pull message and related.
 import datetime
 
 from sqlalchemy import types
-from dbsync.utils import properties_dict, types_dict, object_from_dict, get_pk
+from dbsync.utils import properties_dict, object_from_dict, get_pk
 from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
 from dbsync.core.models import ContentType, Operation, Version
 from dbsync.message.base import ObjectType, MessageQuery
-from dbsync.message.codecs import encode, decode
-
-
-def encode_dict(class_):
-    """Returns a function that transforms a dictionary, mapping the
-    types to simpler ones, according to the given mapped class."""
-    types = types_dict(class_)
-    encodings = dict((k, encode(t)) for k, t in types.iteritems())
-    return lambda dict_: dict((k, encodings[k](v)) for k, v in dict_.iteritems())
-
-
-def decode_dict(class_):
-    """Returns a function that transforms a dictionary, mapping the
-    types to richer ones, according to the given mapped class."""
-    types = types_dict(class_)
-    decodings = dict((k, decode(t)) for k, t in types.iteritems())
-    return lambda dict_: dict((k, decodings[k](v)) for k, v in dict_.iteritems())
+from dbsync.message.codecs import encode, encode_dict, decode, decode_dict
 
 
 class PullMessage(object):
@@ -85,8 +69,8 @@ class PullMessage(object):
                     'models.Operation': self.operations,
                     'models.Version': self.versions}))
 
-    def encode(self):
-        """To JSON-friendly python dictionary. Structure::
+    def to_json(self):
+        """Returns a JSON-friendly python dictionary. Structure::
 
             created: date,
             operations: list of operations,
@@ -95,9 +79,9 @@ class PullMessage(object):
         """
         encoded = {}
         encoded['created'] = encode(types.DateTime)(self.created)
-        encoded['operations'] = map(encode(Operation),
+        encoded['operations'] = map(encode_dict(Operation),
                                     imap(properties_dict, self.operations))
-        encoded['versions'] = map(encode(Version),
+        encoded['versions'] = map(encode_dict(Version),
                                   imap(properties_dict, self.versions))
         encoded['payload'] = {}
         for k, objects in self.payload.iteritems():
@@ -117,44 +101,51 @@ class PullMessage(object):
         self.payload[classname] = obj_set
         return self
 
-    def add_operation(self, op, include_object=True, session=None):
-        """Adds an operation to the message.
+    def add_operation(self, op, session=None):
+        """Adds an operation to the message, including the required
+        object if it's possible to include it.
 
-        If *include_object* is ``True`` (the default), the required
-        object for it to be performed will be added to the message."""
+        A delete operation doesn't include the associated object. If
+        *session* is given, the procedure won't instantiate a new
+        session.
+
+        This operation might fail, (due to database inconsitency) in
+        which case the internal state of the message won't be affected
+        (i.e. it won't end in an inconsistent state)."""
         mname = op.content_type.model_name
         model = synched_models.get(mname, None)
         if model is None:
-            raise ValueError("operation linked to a model "\
-                                 "that's not being tracked: %s" % mname)
-        self.operations.append(op)
-        if op.command == 'd' or not include_object:
-            return self # can't include the object for delete commands
+            raise ValueError("operation linked to model %s "\
+                                 "which isn't being tracked" % mname)
         closeit = session is None
         session = session if not closeit else Session()
         obj = session.query(model).\
-            filter_by(**{get_pk(model): op.row_id}).first()
-        if obj is None:
-            raise ValueError("operation linked to an object "\
-                                 "not present in database: %s" % op)
-        self.add_object(obj)
+            filter_by(**{get_pk(model): op.row_id}).first() \
+            if op.command != 'd' else None
+        self.operations.append(op)
+        # if the object isn't there it's because the operation is old,
+        # and should be able to be compressed out when performing the
+        # conflict resolution phase
+        if obj is not None:
+            self.add_object(obj)
         if closeit:
             session.close()
         return self
 
-    def add_version(self, v, include_operations=True, include_objects=True):
-        """Adds a version to the message.
+    def add_version(self, v):
+        """Adds a version to the message, and all associated
+        operations and objects.
 
-        If *include_operations* is ``True``, it also adds all
-        operations matching the given version. If *include_objects* is
-        ``True``, it also will add the objects required by those
-        operations. Both are ``True`` by default."""
+        This method will either fail and leave the message instance as
+        if nothing had happened, or it will succeed and return the
+        modified message."""
+        if any(op.content_type.model_name not in synched_models
+               for op in v.operations):
+            raise ValueError("version includes operation linked "\
+                                 "to model not currently being tracked")
+        session = Session()
         self.versions.append(v)
-        if not include_operations:
-            return self
-        session = None if include_objects else Session()
         for op in v.operations:
-            self.add_operation(
-                op, include_object=include_objects, session=session)
+            self.add_operation(op, session=session)
         session.close()
         return self
