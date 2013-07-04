@@ -64,6 +64,7 @@ class Function(object):
     """Composable function for attr and method usage."""
     def __init__(self, fn):
         self.fn = fn
+        self.__name__ = fn.__name__ # e.g. for the wraps decorator
     def __call__(self, obj):
         return self.fn(obj)
     def __eq__(self, other):
@@ -96,6 +97,18 @@ class Function(object):
             return Function(lambda obj: self.fn(obj) >= other(obj))
         else:
             return Function(lambda obj: self.fn(obj) >= other)
+    def __invert__(self):
+        return Function(lambda obj: not self.fn(obj))
+    def __and__(self, other):
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) and other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) and other)
+    def __or__(self, other):
+        if isinstance(other, Function):
+            return Function(lambda obj: self.fn(obj) or other(obj))
+        else:
+            return Function(lambda obj: self.fn(obj) or other)
 
 
 def attr(name):
