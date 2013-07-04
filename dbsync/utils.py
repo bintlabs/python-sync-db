@@ -3,6 +3,7 @@ Utility functions.
 """
 
 import random
+import inspect
 from sqlalchemy.orm import object_mapper, class_mapper, ColumnProperty
 
 
@@ -40,7 +41,9 @@ def object_from_dict(class_, dict_):
     return obj
 
 
-def get_pk(sa_class):
-    """Returns the primary key name for the given mapped class."""
-    mapper = class_mapper(sa_class)
+def get_pk(sa_variant):
+    """Returns the primary key name for the given mapped class or
+    object."""
+    mapper = class_mapper(sa_variant) if inspect.isclass(sa_variant) \
+        else object_mapper(sa_variant)
     return mapper.primary_key[0].key

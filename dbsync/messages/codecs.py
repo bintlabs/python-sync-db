@@ -3,6 +3,7 @@ Encoding and decoding of specific datatypes.
 """
 
 import datetime
+import time
 
 from sqlalchemy import types
 from dbsync.lang import *
@@ -11,10 +12,10 @@ from dbsync.utils import types_dict
 
 def _encode_table(type_):
     """*type_* is a SQLAlchemy data type."""
-    if isinstance(type_, types.Date) or isinstance(type_, types.DateTime):
-        # TODO encode dates sensibly
-        # time will be lost, only the date remains
+    if isinstance(type_, types.Date):
         return method("toordinal")
+    elif isinstance(type_, types.DateTime):
+        return lambda value: time.mktime(value.timetuple())
     elif isinstance(type_, types.LargeBinary):
         # TODO encode in base64
         return identity
@@ -34,18 +35,16 @@ def encode_dict(class_):
 def _decode_table(type_):
     """*type_* is a SQLAlchemy data type."""
     if isinstance(type_, types.Date):
-        # TODO decode dates sensibly
         return datetime.date.fromordinal
-    elif or isinstance(type_, types.DateTime):
-        # TODO decode datetimes sensibly
-        return datetime.datetime.fromordinal
+    elif isinstance(type_, types.DateTime):
+        return datetime.datetime.fromtimestamp
     elif isinstance(type_, types.LargeBinary):
         # TODO decode from base64
         return identity
     return identity
 
 #: Decodes a value coming from a JSON string into a richer python value.
-decode = lambda t: guard(_encode_table(t))
+decode = lambda t: guard(_decode_table(t))
 
 def decode_dict(class_):
     """Returns a function that transforms a dictionary, mapping the

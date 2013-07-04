@@ -5,6 +5,7 @@ Common functionality for model synchronization and version tracking.
 from sqlalchemy.orm import sessionmaker
 
 from dbsync.lang import *
+from dbsync.utils import get_pk
 from dbsync.models import ContentType, Operation
 
 
@@ -73,7 +74,7 @@ def is_synched(obj):
     if ct is None:
         raise TypeError("the given object of class {0} isn't being tracked".\
                             format(obj.__class__.__name__))
-    pk_name = obj.__class__.__mapper__.primary_key[0].name
+    pk_name = get_pk(obj)
     last_op = session.query(Operation).\
         filter(Operation.content_type_id == ct.content_type_id,
                Operation.row_id == getattr(obj, pk_name)).\
