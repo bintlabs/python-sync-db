@@ -14,8 +14,8 @@ def configure_networking(**kwargs):
     """Configurate the networking aspect of the client library.
 
     Documentation pending"""
-    for k in kwargs:
-        if k not in _networking_paremeters:
+    for k, v in kwargs.iteritems():
+        if k not in _networking_parameters:
             raise ValueError("unknown configuration parameter: {0}".format(k))
-        _networking_parameters = kwargs[k]
+        _networking_parameters[k] = v
     return _networking_parameters
