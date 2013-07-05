@@ -4,6 +4,7 @@ Base functionality for synchronization messages.
 
 from dbsync.lang import *
 from dbsync.core import synched_models
+from dbsync import models
 
 
 class ObjectType(object):
@@ -54,7 +55,7 @@ class MessageQuery(object):
                 isinstance(target, models.Node):
             self.target = 'models.' + target.__class__.__name__
         elif not isinstance(target, basestring):
-            self.target = target.__class__.__name__
+            self.target = target.__name__
         else:
             self.target = target
         self.payload = payload
@@ -64,7 +65,7 @@ class MessageQuery(object):
         filtering."""
         return MessageQuery(model, self.payload)
 
-    def filter(predicate):
+    def filter(self, predicate):
         """Returns a new query with the collection filtered according
         to the predicate applied to the target objects."""
         to_filter = self.payload.get(self.target, None)
@@ -82,3 +83,7 @@ class MessageQuery(object):
         if lst is not None:
             for e in imap(m, lst):
                 yield e
+
+    def all(self):
+        """Returns a list of all queried objects."""
+        return list(self)

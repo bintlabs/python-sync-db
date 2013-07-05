@@ -3,6 +3,7 @@ import datetime
 import logging
 import json
 
+from dbsync.lang import *
 from dbsync import models
 from dbsync.messages.pull import PullMessage
 
@@ -54,3 +55,22 @@ def test_encode_message():
     version = session.query(models.Version).first()
     message.add_version(version)
     assert message.to_json() == json.loads(json.dumps(message.to_json()))
+
+
+@with_setup(setup, teardown)
+def test_message_query():
+    addstuff()
+    session = Session()
+    message = PullMessage()
+    version = session.query(models.Version).first()
+    message.add_version(version)
+    assert all(isinstance(elem, A) for elem in message.query(A))
+    assert all(isinstance(elem, B) for elem in message.query(B))
+    assert all(isinstance(elem, models.Operation)
+               for elem in message.query(models.Operation))
+    assert all(isinstance(elem, models.Version)
+               for elem in message.query(models.Version))
+    # test equal representation, because the test models are well printed
+    for b in session.query(B):
+        assert repr(b) == repr(message.query(B).filter(
+                attr("id") == b.id).all()[0])
