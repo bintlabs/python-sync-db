@@ -64,13 +64,15 @@ def test_message_query():
     message = PullMessage()
     version = session.query(models.Version).first()
     message.add_version(version)
-    assert all(isinstance(elem, A) for elem in message.query(A))
-    assert all(isinstance(elem, B) for elem in message.query(B))
-    assert all(isinstance(elem, models.Operation)
-               for elem in message.query(models.Operation))
-    assert all(isinstance(elem, models.Version)
-               for elem in message.query(models.Version))
     # test equal representation, because the test models are well printed
     for b in session.query(B):
         assert repr(b) == repr(message.query(B).filter(
                 attr("id") == b.id).all()[0])
+    for op in session.query(models.Operation):
+        assert repr(op) == repr(message.query(models.Operation).filter(
+                attr("order") == op.order).all()[0])
+    try:
+        message.query(1)
+        raise Exception("Message query did not fail")
+    except TypeError:
+        pass

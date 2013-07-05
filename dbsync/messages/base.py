@@ -2,6 +2,8 @@
 Base functionality for synchronization messages.
 """
 
+import inspect
+
 from dbsync.lang import *
 from dbsync.core import synched_models
 from dbsync import models
@@ -50,14 +52,17 @@ class MessageQuery(object):
     """Query over internal structure of a message."""
 
     def __init__(self, target, payload):
-        if isinstance(target, models.Operation) or \
-                isinstance(target, models.Version) or \
-                isinstance(target, models.Node):
-            self.target = 'models.' + target.__class__.__name__
-        elif not isinstance(target, basestring):
+        if target == models.Operation or \
+                target == models.Version or \
+                target == models.Node:
+            self.target = 'models.' + target.__name__
+        elif inspect.isclass(target):
             self.target = target.__name__
-        else:
+        elif isinstance(target, basestring):
             self.target = target
+        else:
+            raise TypeError(
+                "query expected a class or string, got %s" % type(target))
         self.payload = payload
 
     def query(self, model):
