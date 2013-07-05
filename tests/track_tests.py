@@ -7,7 +7,7 @@ from dbsync.client.push import compress
 from tests.models import A, B, Base, Session
 
 
-def addStuff():
+def addstuff():
     a1 = A(name="first a")
     a2 = A(name="second a")
     b1 = B(name="first b", a=a1)
@@ -30,7 +30,7 @@ def teardown():
 
 @with_setup(setup, teardown)
 def test_tracking():
-    addStuff()
+    addstuff()
     session = Session()
     a1, a2 = session.query(A)
     b1, b2, b3 = session.query(B)
@@ -51,7 +51,7 @@ def test_tracking():
 
 @with_setup(setup, teardown)
 def test_compression():
-    addStuff()
+    addstuff()
     session = Session()
     a1, a2 = session.query(A)
     b1, b2, b3 = session.query(B)

@@ -9,9 +9,9 @@ from dbsync.utils import properties_dict, object_from_dict, get_pk
 from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
-from dbsync.core.models import ContentType, Operation, Version
-from dbsync.message.base import ObjectType, MessageQuery
-from dbsync.message.codecs import encode, encode_dict, decode, decode_dict
+from dbsync.models import ContentType, Operation, Version
+from dbsync.messages.base import ObjectType, MessageQuery
+from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
 
 class PullMessage(object):
@@ -48,7 +48,7 @@ class PullMessage(object):
             self.created = datetime.datetime.now()
 
     def _build_from_raw(self, data):
-        self.created = decode(types.DateTime)(data['created'])
+        self.created = decode(types.DateTime())(data['created'])
         self.operations = map(partial(object_from_dict, Operation),
                               imap(decode_dict(Operation), data['operations']))
         self.versions = map(partial(object_from_dict, Version),
@@ -56,7 +56,7 @@ class PullMessage(object):
         getm = synched_models.get
         for k, v, m in ifilter(lambda (k, v, m): m is not None,
                                imap(lambda (k, v): (k, v, getm(k, None)),
-                                    raw_data['payload'].iteritems())):
+                                    data['payload'].iteritems())):
             self.payload[k] = set(
                 map(lambda dict_: ObjectType(k, dict_[get_pk(m)], **dict_),
                     imap(decode_dict(m), v)))
@@ -78,7 +78,7 @@ class PullMessage(object):
             payload: dictionary with lists of objects mapped to model names
         """
         encoded = {}
-        encoded['created'] = encode(types.DateTime)(self.created)
+        encoded['created'] = encode(types.DateTime())(self.created)
         encoded['operations'] = map(encode_dict(Operation),
                                     imap(properties_dict, self.operations))
         encoded['versions'] = map(encode_dict(Version),
@@ -97,7 +97,7 @@ class PullMessage(object):
         classname = class_.__name__
         obj_set = self.payload.get(classname, set())
         obj_set.add(ObjectType(
-                classname, getattr(obj, get_pk(class_)), properties_dict(obj)))
+                classname, getattr(obj, get_pk(class_)), **properties_dict(obj)))
         self.payload[classname] = obj_set
         return self
 
