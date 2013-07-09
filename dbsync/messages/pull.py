@@ -77,6 +77,7 @@ class PullMessage(object):
                               imap(decode_dict(Operation), data['operations']))
         self.versions = map(partial(object_from_dict, Version),
                             imap(decode_dict(Version), data['versions']))
+        self.payload = {}
         getm = synched_models.get
         for k, v, m in ifilter(lambda (k, v, m): m is not None,
                                imap(lambda (k, v): (k, v, getm(k, None)),

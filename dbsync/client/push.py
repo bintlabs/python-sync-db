@@ -26,7 +26,7 @@ def compress():
                 # updates are superfluous
                 map(session.delete, seq[:-1])
             elif seq[0].command == 'd':
-                # it's as if the object never existedb
+                # it's as if the object never existed
                 map(session.delete, seq)
         elif seq[-1].command == 'u':
             if andmap(attr("command") == 'u', seq[:-1]):
