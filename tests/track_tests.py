@@ -3,6 +3,7 @@ from nose.tools import *
 
 from dbsync import models, core, client
 from dbsync.client.push import compress
+from dbsync.messages.pull import compressed_operations
 
 from tests.models import A, B, Base, Session
 
@@ -16,6 +17,15 @@ def addstuff():
     session = Session()
     session.add_all([a1, a2, b1, b2, b3])
     session.commit()
+
+def changestuff():
+    session = Session()
+    a1, a2 = session.query(A)
+    b1, b2, b3 = session.query(B)
+    a1.name = "first a modified"
+    b2.a = a2
+    session.delete(b3)
+    session.commit()    
 
 def setup():
     pass
@@ -31,13 +41,8 @@ def teardown():
 @with_setup(setup, teardown)
 def test_tracking():
     addstuff()
+    changestuff()
     session = Session()
-    a1, a2 = session.query(A)
-    b1, b2, b3 = session.query(B)
-    a1.name = "first a modified"
-    b2.a = a2
-    session.delete(b3)
-    session.commit()
     assert session.query(models.Operation).\
         filter(models.Operation.command == 'i').\
         count() == 5, "insert operations don't match"
@@ -52,14 +57,9 @@ def test_tracking():
 @with_setup(setup, teardown)
 def test_compression():
     addstuff()
-    session = Session()
-    a1, a2 = session.query(A)
-    b1, b2, b3 = session.query(B)
-    a1.name = "first a modified"
-    b2.a = a2
-    session.delete(b3)
-    session.commit()
+    changestuff()
     compress() # remove unnecesary operations
+    session = Session()
     assert session.query(models.Operation).\
         filter(models.Operation.command == 'i').\
         count() == 4, "insert operations don't match"
@@ -69,3 +69,14 @@ def test_compression():
     assert session.query(models.Operation).\
         filter(models.Operation.command == 'd').\
         count() == 0, "delete operations don't match"
+
+
+@with_setup(setup, teardown)
+def test_compression_consistency():
+    addstuff()
+    changestuff()
+    session = Session()
+    ops = session.query(models.Operation).all()
+    compress()
+    news = session.query(models.Operation).order_by(models.Operation.order).all()
+    assert news == compressed_operations(ops)

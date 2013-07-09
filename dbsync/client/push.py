@@ -20,13 +20,13 @@ def compress():
         filter(Operation.version_id == None).order_by(Operation.order.desc())
     seqs = group_by(lambda op: (op.row_id, op.content_type_id), unversioned)
 
-    for seq in ifilter(lambda seq: len(seq) > 1, imap(snd, seqs.iteritems())):
+    for seq in ifilter(lambda seq: len(seq) > 1, seqs.itervalues()):
         if seq[-1].command == 'i':
             if andmap(attr("command") == 'u', seq[:-1]):
                 # updates are superfluous
                 map(session.delete, seq[:-1])
             elif seq[0].command == 'd':
-                # it's as if the object never existed
+                # it's as if the object never existedb
                 map(session.delete, seq)
         elif seq[-1].command == 'u':
             if andmap(attr("command") == 'u', seq[:-1]):

@@ -14,6 +14,27 @@ from dbsync.messages.base import ObjectType, MessageQuery
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
 
+def compressed_operations(operations):
+    """Compresses as set of operations so as to avoid redundant
+    ones. Returns the compressed set sorted by operation order. This
+    procedure doesn't perform database operations."""
+    seqs = group_by(lambda op: (op.row_id, op.content_type_id),
+                    sorted(operations, key=attr("order")))
+    compressed = []
+    for seq in seqs.itervalues():
+        if seq[0].command == 'i' and andmap(attr("command") == 'u', seq[1:]):
+            compressed.append(seq[0])
+        elif seq[0].command == 'u':
+            if andmap(attr("command") == 'u', seq[1:]):
+                compressed.append(seq[0])
+            elif seq[-1].command == 'd':
+                compressed.append(seq[-1])
+        elif len(seq) == 1:
+            compressed.append(seq[0])
+    compressed.sort(key=attr("order"))
+    return compressed
+
+
 class PullMessage(object):
     """A pull message.
 
@@ -28,14 +49,14 @@ class PullMessage(object):
     created = None
 
     #: List of operations to perform in the node.
-    operations = []
+    operations = None
 
     #: List of versions being pulled.
-    versions = []
+    versions = None
 
     #: Extra data required to perform the operations.
     #: dictionary of (model name, set of wrapped objects)
-    payload = {}
+    payload = None
 
     def __init__(self, raw_data=None):
         """*raw_data* must be a python dictionary, normally the
@@ -46,6 +67,9 @@ class PullMessage(object):
             self._build_from_raw(raw_data)
         else:
             self.created = datetime.datetime.now()
+            self.operations = []
+            self.versions = []
+            self.payload = {}
 
     def _build_from_raw(self, data):
         self.created = decode(types.DateTime())(data['created'])
