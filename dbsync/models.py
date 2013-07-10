@@ -30,6 +30,10 @@ class ContentType(Base):
     table_name = Column(String)
     model_name = Column(String)
 
+    def __repr__(self):
+        return u"<ContentType table_name: {0}, model_name: {1}>".\
+            format(self.table_name, self.model_name)
+
 
 class Version(Base):
     """A database version.
@@ -41,6 +45,10 @@ class Version(Base):
 
     version_id = Column(Integer, primary_key=True)
     created = Column(DateTime)
+
+    def __repr__(self):
+        return u"<Version version_id: {0}, created: {1}>".\
+            format(self.version_id, self.created)
 
 
 class Operation(Base):

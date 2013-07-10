@@ -31,7 +31,7 @@ class B(Base):
     name = Column(String)
     a_id = Column(Integer, ForeignKey("test_a.id"))
 
-    a = relationship(A)
+    a = relationship(A, backref="bs")
 
     def __repr__(self):
         return u"<B id:{0} name:{1} a_id:{2}>".format(

@@ -154,3 +154,12 @@ def group_by(fn, col):
         else:
             subcol.append(e)
     return groups
+
+
+def lookup(predicate, collection, default=None):
+    """Looks up the first value in *collection* that satisfies
+    *predicate*."""
+    for e in collection:
+        if predicate(e):
+            return e
+    return default
