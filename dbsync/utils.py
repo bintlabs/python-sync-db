@@ -47,23 +47,3 @@ def get_pk(sa_variant):
     mapper = class_mapper(sa_variant) if inspect.isclass(sa_variant) \
         else object_mapper(sa_variant)
     return mapper.primary_key[0].key
-
-
-def get_related_tables(sa_variant, models):
-    """Returns a list of related SA tables dependent on the given SA
-    model or object by foreign key."""
-    mapper = class_mapper(sa_variant) if inspect.isclass(sa_variant) \
-        else object_mapper(sa_variant)
-    return [table for table in (class_mapper(model).mapped_table
-                                for model in models)
-            if mapper.mapped_table in [key.column.table
-                                       for key in table.foreign_keys]]
-
-
-def get_fks(table_from, table_to):
-    """Returns the names of the foreign keys that are defined in
-    *table_from* SA table and that refer to *table_to* SA table. If
-    the foreign keys don't exist, this procedure returns an empty
-    list."""
-    fks = filter(lambda k: k.column.table == table_to, table_from.foreign_keys)
-    return [fk.parent.name for fk in fks]

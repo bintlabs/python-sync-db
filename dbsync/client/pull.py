@@ -1,15 +1,41 @@
 """
 Pull, merge and related operations.
+
+This module handles the conflict resolution that's required for the
+local merge operation.
+
+TODO: Resolve conflicts according to programmer-given listener
+procedures and/or model-level directives.
 """
 
 from sqlalchemy import or_
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, get_related_tables, get_fks, class_mapper
+from dbsync.utils import get_pk, class_mapper
 from dbsync.core import Session, synched_models
 from dbsync.models import Operation, ContentType
 from dbsync.messages.pull import compressed_operations
 from dbsync.client.push import compress
+
+
+def get_related_tables(sa_class):
+    """Returns a list of related SA tables dependent on the given SA
+    model by foreign key."""
+    mapper = class_mapper(sa_class)
+    models = synched_models.itervalues()
+    return [table for table in (class_mapper(model).mapped_table
+                                for model in models)
+            if mapper.mapped_table in [key.column.table
+                                       for key in table.foreign_keys]]
+
+
+def get_fks(table_from, table_to):
+    """Returns the names of the foreign keys that are defined in
+    *table_from* SA table and that refer to *table_to* SA table. If
+    the foreign keys don't exist, this procedure returns an empty
+    list."""
+    fks = filter(lambda k: k.column.table == table_to, table_from.foreign_keys)
+    return [fk.parent.name for fk in fks]
 
 
 def related_content_types(operation, content_types=None):
@@ -25,8 +51,7 @@ def related_content_types(operation, content_types=None):
     parent_model = synched_models.get(parent_ct.model_name, None)
     if parent_model is None:
         return []
-    related_tables = get_related_tables(parent_model,
-                                        synched_models.itervalues())
+    related_tables = get_related_tables(parent_model)
     return filter(bool,
                   [lookup(attr("table_name") == table.name, content_types)
                    for table in related_tables])
@@ -47,8 +72,7 @@ def related_row_ids(operation, content_types=None):
     if parent_model is None:
         return set()
     parent_pk = get_pk(parent_model)
-    related_tables = get_related_tables(parent_model,
-                                        synched_models.itervalues())
+    related_tables = get_related_tables(parent_model)
 
     def get_model(table):
         return synched_models.get(
