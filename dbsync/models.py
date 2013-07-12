@@ -71,8 +71,7 @@ class Operation(Base):
     order = Column(Integer, primary_key=True)
 
     version = relationship(Version, backref=backref("operations", lazy="joined"))
-    content_type = relationship(
-        ContentType, backref=backref("operations", lazy="joined"))
+    content_type = relationship(ContentType, backref="operations", lazy="joined")
 
     @validates('command')
     def validate_command(self, key, command):

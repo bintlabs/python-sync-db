@@ -2,8 +2,7 @@ import logging
 from nose.tools import *
 
 from dbsync import models, core, client
-from dbsync.client.push import compress
-from dbsync.messages.pull import compressed_operations
+from dbsync.client.compression import compress, compressed_operations
 
 from tests.models import A, B, Base, Session
 

@@ -49,6 +49,25 @@ def toggle_listening(enabled=None):
     listening = enabled if enabled is not None else not listening
 
 
+def with_listening(enabled):
+    """Decorator for procedures to be executed with the specified
+    listening status."""
+    def wrapper(proc):
+        @wraps(proc)
+        def wrapped(*args, **kwargs):
+            prev = listening
+            toggle_listening(enabled)
+            try:
+                result = proc(*args, **kwargs)
+                toggle_listening(prev)
+                return result
+            except:
+                toggle_listening(prev)
+                raise
+        return wrapped
+    return wrapper
+
+
 def generate_content_types():
     """Fills the content type table.
 

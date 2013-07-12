@@ -14,7 +14,6 @@ from dbsync.lang import *
 from dbsync.utils import get_pk, class_mapper
 from dbsync.core import synched_models
 from dbsync.models import Operation, ContentType
-from dbsync.messages.pull import compressed_operations
 
 
 def get_related_tables(sa_class):
@@ -111,23 +110,3 @@ def find_dependency_conflicts(unversioned_ops, pull_ops, content_types, session)
         if local_op.command == 'i' or local_op.command == 'u'
         if local_op.content_type in related_content_types(pull_op, content_types)
         if local_op.row_id in related_row_ids(pull_op, content_types, session)]
-
-
-def resolve_conflicts(pull_message, session):
-    """Finds and resolves the conflicts given the current state of the
-    database and the given pull message."""
-    content_types = session.query(ContentType).all()
-    unversioned_ops = compressed_operations(
-        session.query(Operation).filter(Operation.version_id == None).\
-            order_by(Operation.order.asc()))
-    pull_ops = compressed_operations(pull_message.operations)
-
-    conflicts = find_direct_conflicts(unversioned_ops, pull_ops)
-
-    dependency_conflicts = find_dependency_conflicts(
-        unversioned_ops, pull_ops, content_types, session)
-
-    # TODO resolve conflicts
-    print conflicts
-    print "---"
-    print dependecy_conflicts

@@ -3,11 +3,15 @@ Pull, merge and related operations.
 """
 
 from dbsync.lang import *
-from dbsync.core import Session
+from dbsync import core
 from dbsync.messages.pull import PullMessage
-from dbsync.client.conflicts import resolve_conflicts
+from dbsync.client.compression import compress, compressed_operations
+from dbsync.client.conflicts import (
+    find_direct_conflicts,
+    find_dependency_conflicts)
 
 
+@core.with_listening(False)
 def merge(pull_message):
     """Merges a message from the server with the local database.
 
@@ -15,9 +19,19 @@ def merge(pull_message):
     if not isinstance(pull_message, PullMessage):
         raise TypeError("need an instance of dbsync.messages.pull.PullMessage "\
                             "to perform the local merge operation")
+    session = core.Session()
+    content_types = session.query(ContentType).all()
     # preamble: detect conflicts between pulled operations and unversioned ones
-    session = Session()
-    resolve_conflicts(pull_message, session)
+    compress()
+    unversioned_ops = session.query(Operation).\
+        filter(Operation.version_id == None).order_by(Operation.order.asc())
+    pull_ops = compressed_operations(pull_message.operations)
+
+    conflicts = find_direct_conflicts(unversioned_ops, pull_ops)
+
+    dependency_conflicts = find_dependency_conflicts(
+        unversioned_ops, pull_ops, content_types, session)
+
     # merge transaction
     # first phase: move the local operations and objects out of the way
     # TODO first phase
