@@ -29,6 +29,11 @@ def snd(pair):
     return pair[1]
 
 
+def swap(pair):
+    f, s = pair
+    return (s, f)
+
+
 def partition(predicate, collection):
     """Splits the collection according to the predicate.
 
