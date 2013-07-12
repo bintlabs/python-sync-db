@@ -27,10 +27,15 @@ def merge(pull_message):
         filter(Operation.version_id == None).order_by(Operation.order.asc())
     pull_ops = compressed_operations(pull_message.operations)
 
-    conflicts = find_direct_conflicts(unversioned_ops, pull_ops)
+    direct_conflicts = find_direct_conflicts(unversioned_ops, pull_ops)
 
-    dependency_conflicts = find_dependency_conflicts(
+    # in which the delete operation is registered on the pull message
+    dependency_conflicts_pull = find_dependency_conflicts(
         unversioned_ops, pull_ops, content_types, session)
+
+    # in which the delete operation was performed locally
+    dependency_conflicts_local = find_dependency_conflicts(
+        pull_ops, unversioned_ops, content_types, session)
 
     # merge transaction
     # first phase: move the local operations and objects out of the way

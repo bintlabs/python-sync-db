@@ -102,11 +102,13 @@ def find_dependency_conflicts(unversioned_ops, pull_ops, content_types, session)
     """Detect conflicts by relationship dependency: deletes on the
     pull message on objects that have dependent objects inserted or
     updated on the local database."""
+    related_ct_ids = lambda op: map(attr("content_type_id"),
+                                    related_content_types(op, content_types))
     return [
         (pull_op, local_op)
         for pull_op in pull_ops
         if pull_op.command == 'd'
         for local_op in unversioned_ops
         if local_op.command == 'i' or local_op.command == 'u'
-        if local_op.content_type in related_content_types(pull_op, content_types)
+        if local_op.content_type_id in related_ct_ids(pull_op)
         if local_op.row_id in related_row_ids(pull_op, content_types, session)]
