@@ -76,3 +76,15 @@ def test_message_query():
         raise Exception("Message query did not fail")
     except TypeError:
         pass
+
+
+@with_setup(setup, teardown)
+def test_message_does_not_contaminate_database():
+    addstuff()
+    session = Session()
+    message = PullMessage()
+    version = session.query(models.Version).first()
+    message.add_version(version)
+    # test that the are no unversioned operations
+    assert not session.query(models.Operation).\
+        filter(models.Operation.version_id == None).all()

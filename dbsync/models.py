@@ -80,7 +80,7 @@ class Operation(Base):
         return command
 
     def __repr__(self):
-        return u"<Operation row_id: {0}, content_type: {1}, command: {2}>".\
+        return u"<Operation row_id: {0}, content_type_id: {1}, command: {2}>".\
             format(self.row_id, self.content_type_id, self.command)
 
 
