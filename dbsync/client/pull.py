@@ -8,7 +8,8 @@ from dbsync.messages.pull import PullMessage
 from dbsync.client.compression import compress, compressed_operations
 from dbsync.client.conflicts import (
     find_direct_conflicts,
-    find_dependency_conflicts)
+    find_dependency_conflicts,
+    find_reversed_dependency_conflicts)
 
 
 @core.with_listening(False)
@@ -34,9 +35,9 @@ def merge(pull_message):
         unversioned_ops, pull_ops, content_types, session)
 
     # in which the delete operation was performed locally
-    dependency_conflicts_local = map(swap, find_dependency_conflicts(
-        pull_ops, unversioned_ops, content_types, session))
+    dependency_conflicts_local = find_reversed_dependency_conflicts(
+        pull_ops, unversioned_ops, content_types, pull_message)
 
     # merge transaction
-    # first phase: move the local operations and objects out of the way
+    # first phase: I don't know what the first phase is
     # TODO first phase

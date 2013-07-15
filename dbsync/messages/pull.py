@@ -5,16 +5,20 @@ Pull message and related.
 import datetime
 
 from sqlalchemy import types
-from dbsync.utils import properties_dict, object_from_dict, get_pk
+from dbsync.utils import (
+    properties_dict,
+    object_from_dict,
+    get_pk,
+    parent_objects)
 from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
 from dbsync.models import ContentType, Operation, Version
-from dbsync.messages.base import ObjectType, MessageQuery
+from dbsync.messages.base import ObjectType, MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
 
-class PullMessage(object):
+class PullMessage(BaseMessage):
     """A pull message.
 
     A pull message can be queried over by version, operation or model,
@@ -33,22 +37,18 @@ class PullMessage(object):
     #: List of versions being pulled.
     versions = None
 
-    #: Extra data required to perform the operations.
-    #: dictionary of (model name, set of wrapped objects)
-    payload = None
-
     def __init__(self, raw_data=None):
         """*raw_data* must be a python dictionary, normally the
         product of JSON decoding. If not given, the message will be
         empty and should be filled with the appropriate methods
         (add_*)."""
+        super(PullMessage, self).__init__()
         if raw_data is not None:
             self._build_from_raw(raw_data)
         else:
             self.created = datetime.datetime.now()
             self.operations = []
             self.versions = []
-            self.payload = {}
 
     def _build_from_raw(self, data):
         self.created = decode(types.DateTime())(data['created'])
@@ -56,7 +56,6 @@ class PullMessage(object):
                               imap(decode_dict(Operation), data['operations']))
         self.versions = map(partial(object_from_dict, Version),
                             imap(decode_dict(Version), data['versions']))
-        self.payload = {}
         getm = synched_models.get
         for k, v, m in ifilter(lambda (k, v, m): m is not None,
                                imap(lambda (k, v): (k, v, getm(k, None)),
@@ -95,16 +94,6 @@ class PullMessage(object):
                                             imap(method("to_dict"), objects))
         return encoded
 
-    def add_object(self, obj):
-        """Adds an object to the message, if it's not already in."""
-        class_ = obj.__class__
-        classname = class_.__name__
-        obj_set = self.payload.get(classname, set())
-        obj_set.add(ObjectType(
-                classname, getattr(obj, get_pk(class_)), **properties_dict(obj)))
-        self.payload[classname] = obj_set
-        return self
-
     def add_operation(self, op, session=None):
         """Adds an operation to the message, including the required
         object if it's possible to include it.
@@ -132,6 +121,9 @@ class PullMessage(object):
         # conflict resolution phase
         if obj is not None:
             self.add_object(obj)
+            # add parent objects to resolve possible conflicts in merge
+            for parent in parent_objects(obj, synched_models.values(), session):
+                self.add_object(parent)
         if closeit:
             session.close()
         return self

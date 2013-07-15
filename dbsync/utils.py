@@ -47,3 +47,25 @@ def get_pk(sa_variant):
     mapper = class_mapper(sa_variant) if inspect.isclass(sa_variant) \
         else object_mapper(sa_variant)
     return mapper.primary_key[0].key
+
+
+def parent_objects(sa_object, models, session):
+    """Returns all the parent objects the given *sa_object* point to
+    (through foreign keys in *sa_object*).
+
+    *models* is a list of mapped classes.
+
+    *session* must be a valid SA session instance."""
+    mapper = object_mapper(sa_object)
+    references = [(getattr(sa_object, k.parent.name), k.column.table)
+                  for k in mapper.mapped_table.foreign_keys]
+    def get_model(table):
+        for m in models:
+            if class_mapper(m).mapped_table == table:
+                return m
+        return None
+    return filter(lambda obj: obj is not None,
+                  (session.query(m).filter_by(**{get_pk(m): val}).first()
+                   for val, m in ((v, get_model(table))
+                                  for v, table in references)
+                   if m is not None))

@@ -21,12 +21,11 @@ def const(value):
     return lambda *args, **kwargs: value
 
 
-def fst(pair):
-    return pair[0]
+def index(ind):
+    return lambda indexable: indexable[ind]
 
-
-def snd(pair):
-    return pair[1]
+fst = index(0)
+snd = index(1)
 
 
 def swap(pair):

@@ -5,6 +5,7 @@ Base functionality for synchronization messages.
 import inspect
 
 from dbsync.lang import *
+from dbsync.utils import get_pk, properties_dict
 from dbsync.core import synched_models
 from dbsync import models
 
@@ -92,3 +93,27 @@ class MessageQuery(object):
     def all(self):
         """Returns a list of all queried objects."""
         return list(self)
+
+
+class BaseMessage(object):
+    """The base type for messages with a payload."""
+
+    #: dictionary of (model name, set of wrapped objects)
+    payload = None
+
+    def __init__(self):
+        self.payload = {}
+
+    def query(self, model):
+        """Returns a query object for this message."""
+        return MessageQuery(model, self.payload)
+
+    def add_object(self, obj):
+        """Adds an object to the message, if it's not already in."""
+        class_ = obj.__class__
+        classname = class_.__name__
+        obj_set = self.payload.get(classname, set())
+        obj_set.add(ObjectType(
+                classname, getattr(obj, get_pk(class_)), **properties_dict(obj)))
+        self.payload[classname] = obj_set
+        return self
