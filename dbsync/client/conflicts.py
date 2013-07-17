@@ -114,7 +114,7 @@ def related_remote_ids(operation, content_types, container):
         if ct is not None)
 
 
-def find_direct_conflicts(unversioned_ops, pull_ops):
+def find_direct_conflicts(pull_ops, unversioned_ops):
     """Detect conflicts where there's both unversioned and pulled
     operations, update or delete ones, referering to the same tracked
     object. This procedure relies on the uniqueness of the primary
@@ -129,7 +129,7 @@ def find_direct_conflicts(unversioned_ops, pull_ops):
         if pull_op.content_type_id == local_op.content_type_id]
 
 
-def find_dependency_conflicts(unversioned_ops, pull_ops, content_types, session):
+def find_dependency_conflicts(pull_ops, unversioned_ops, content_types, session):
     """Detect conflicts by relationship dependency: deletes on the
     pull message on objects that have dependent objects inserted or
     updated on the local database."""
@@ -143,8 +143,8 @@ def find_dependency_conflicts(unversioned_ops, pull_ops, content_types, session)
             related_local_ids(pull_op, content_types, session)]
 
 
-def find_reversed_dependency_conflicts(unversioned_ops,
-                                       pull_ops,
+def find_reversed_dependency_conflicts(pull_ops,
+                                       unversioned_ops,
                                        content_types,
                                        pull_message):
     """Deletes on the local database on objects that are referenced by
@@ -157,3 +157,17 @@ def find_reversed_dependency_conflicts(unversioned_ops,
         if pull_op.command == 'i' or pull_op.command == 'u'
         if (pull_op.row_id, pull_op.content_type_id) in \
                 related_remote_ids(local_op, content_types, pull_message)]
+
+
+def find_insert_conflicts(pull_ops, unversioned_ops):
+    """Inserts over the same object. These conflicts should be
+    resolved by keeping both objects, but moving the local one out of
+    the way (reinserting it to get a new primary key)."""
+    return [
+        (pull_op, local_op)
+        for local_op in unversioned_ops
+        if local_op.command == 'i'
+        for pull_op in pull_ops
+        if pull_op.command == 'i'
+        if pull_op.row_id == local_op.row_id
+        if pull_op.content_type_id == local_op.content_type_id]

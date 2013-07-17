@@ -52,7 +52,7 @@ def test_find_direct_conflicts():
     session = Session()
     message_ops = create_fake_operations()
     conflicts = find_direct_conflicts(
-        session.query(models.Operation).all(), message_ops)
+        message_ops, session.query(models.Operation).all())
     expected = [
         (message_ops[0],
          models.Operation(row_id=3, content_type_id=2, command='d')), # b3
@@ -73,8 +73,8 @@ def test_find_dependency_conflicts():
     content_types = session.query(models.ContentType).all()
     message_ops = create_fake_operations()
     conflicts = find_dependency_conflicts(
-        session.query(models.Operation).all(),
         message_ops,
+        session.query(models.Operation).all(),
         content_types,
         session)
     expected = [
