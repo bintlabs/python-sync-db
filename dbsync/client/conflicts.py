@@ -133,14 +133,17 @@ def find_dependency_conflicts(pull_ops, unversioned_ops, content_types, session)
     """Detect conflicts by relationship dependency: deletes on the
     pull message on objects that have dependent objects inserted or
     updated on the local database."""
+    related_ids = dict(
+        (pull_op, related_local_ids(pull_op, content_types, session))
+        for pull_op in pull_ops
+        if pull_op.command == 'd')
     return [
         (pull_op, local_op)
         for pull_op in pull_ops
         if pull_op.command == 'd'
         for local_op in unversioned_ops
         if local_op.command == 'i' or local_op.command == 'u'
-        if (local_op.row_id, local_op.content_type_id) in \
-            related_local_ids(pull_op, content_types, session)]
+        if (local_op.row_id, local_op.content_type_id) in related_ids[pull_op]]
 
 
 def find_reversed_dependency_conflicts(pull_ops,
@@ -149,14 +152,17 @@ def find_reversed_dependency_conflicts(pull_ops,
                                        pull_message):
     """Deletes on the local database on objects that are referenced by
     inserted or updated objects in the pull message."""
+    related_ids = dict(
+        (local_op, related_remote_ids(local_op, content_types, pull_message))
+        for local_op in unversioned_ops
+        if local_op.command == 'd')
     return [
         (pull_op, local_op)
         for local_op in unversioned_ops
         if local_op.command == 'd'
         for pull_op in pull_ops
         if pull_op.command == 'i' or pull_op.command == 'u'
-        if (pull_op.row_id, pull_op.content_type_id) in \
-                related_remote_ids(local_op, content_types, pull_message)]
+        if (pull_op.row_id, pull_op.content_type_id) in related_ids[local_op]]
 
 
 def find_insert_conflicts(pull_ops, unversioned_ops):
