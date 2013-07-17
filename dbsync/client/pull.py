@@ -12,15 +12,15 @@ from dbsync.client.conflicts import (
     find_reversed_dependency_conflicts)
 
 
+@core.with_transaction
 @core.with_listening(False)
-def merge(pull_message):
+def merge(pull_message, session=None):
     """Merges a message from the server with the local database.
 
     *pull_message* is an instance of dbsync.messages.pull.PullMessage."""
     if not isinstance(pull_message, PullMessage):
         raise TypeError("need an instance of dbsync.messages.pull.PullMessage "\
                             "to perform the local merge operation")
-    session = core.Session()
     content_types = session.query(ContentType).all()
     # preamble: detect conflicts between pulled operations and unversioned ones
     compress()

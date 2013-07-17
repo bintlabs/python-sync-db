@@ -57,18 +57,22 @@ def related_local_ids(operation, content_types, session):
             None)
 
     def ct_for_model(model):
-        return lookup(attr("model_name") == obj.__name__,
+        return lookup(attr("model_name") == model.__name__,
                       content_types)
 
     mapped_fks = ifilter(lambda (m, fks): m is not None and fks,
                          [(get_model(t),
                            get_fks(t, class_mapper(parent_model).mapped_table))
                           for t in related_tables])
-    return set((ct_for_model(model), getattr(obj, get_pk(obj)))
-               for model, fks in mapped_fks
-               for obj in session.query(model).\
-                   filter(or_(*(getattr(model, fk) == operation.row_id
-                                for fk in fks))))
+    return set(
+        (pk, ct.content_type_id)
+        for pk, ct in \
+            ((getattr(obj, get_pk(obj)), ct_for_model(model))
+             for model, fks in mapped_fks
+             for obj in session.query(model).\
+                 filter(or_(*(getattr(model, fk) == operation.row_id
+                              for fk in fks))))
+        if ct is not None)
 
 
 def related_remote_ids(operation, content_types, container):
@@ -99,11 +103,15 @@ def related_remote_ids(operation, content_types, container):
                            get_fks(t, class_mapper(parent_model).mapped_table))
                           for t in related_tables])
 
-    return set((ct_for_model(model), getattr(obj, get_pk(obj)))
-               for model, fks in mapped_fks
-               for obj in container.query(model).\
-                   filter(lambda obj: any(getattr(model, fk) == operation.row_id
-                                          for fk in fks)))
+    return set(
+        (pk, ct.content_type_id)
+        for pk, ct in \
+            ((getattr(obj, get_pk(obj)), ct_for_model(model))
+             for model, fks in mapped_fks
+             for obj in container.query(model).\
+                 filter(lambda obj: any(getattr(model, fk) == operation.row_id
+                                        for fk in fks)))
+        if ct is not None)
 
 
 def find_direct_conflicts(unversioned_ops, pull_ops):
@@ -147,5 +155,5 @@ def find_reversed_dependency_conflicts(unversioned_ops,
         if local_op.command == 'd'
         for pull_op in pull_ops
         if pull_op.command == 'i' or pull_op.command == 'u'
-        if (pull_op.row_id, pull_op.content_type_id in \
+        if (pull_op.row_id, pull_op.content_type_id) in \
                 related_remote_ids(local_op, content_types, pull_message)]

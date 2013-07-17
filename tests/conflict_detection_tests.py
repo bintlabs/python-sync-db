@@ -78,12 +78,12 @@ def test_find_dependency_conflicts():
         content_types,
         session)
     expected = [
-        (message_ops[1],
-         models.Operation(row_id=1, content_type_id=2, command='i')),
-        (message_ops[2],
-         models.Operation(row_id=2, content_type_id=2, command='i')),
-        (message_ops[2],
-         models.Operation(row_id=2, content_type_id=2, command='u'))]
+        (message_ops[1], # a1
+         models.Operation(row_id=1, content_type_id=2, command='i')), # b1
+        (message_ops[2], # a2
+         models.Operation(row_id=2, content_type_id=2, command='i')), # b2
+        (message_ops[2], # a2
+         models.Operation(row_id=2, content_type_id=2, command='u'))] # b2
     logging.info(conflicts)
     logging.info(expected)
     assert repr(conflicts) == repr(expected)

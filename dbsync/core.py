@@ -68,6 +68,27 @@ def with_listening(enabled):
     return wrapper
 
 
+def with_transaction(proc):
+    """Decorator for a procedure that uses a session and acts as an
+    atomic transaction. It feeds a new session to the procedure, and
+    commits it, rolls it back, and / or closes it when it's
+    appropriate."""
+    @wraps(proc)
+    def wrapped(*args, **kwargs):
+        session = Session()
+        try:
+            kwargs.update({"session": session})
+            result = proc(*args, **kwargs)
+            session.commit()
+            session.close()
+            return result
+        except:
+            session.rollback()
+            session.close()
+            raise
+    return wrapped
+
+
 def generate_content_types():
     """Fills the content type table.
 

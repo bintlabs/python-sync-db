@@ -1,6 +1,7 @@
 import logging
 from nose.tools import *
 
+from dbsync.lang import *
 from dbsync import models, core, client
 from dbsync.client.compression import compress, compressed_operations
 
@@ -79,3 +80,16 @@ def test_compression_consistency():
     compress()
     news = session.query(models.Operation).order_by(models.Operation.order).all()
     assert news == compressed_operations(ops)
+
+
+@with_setup(setup, teardown)
+def test_compression_correctness():
+    addstuff()
+    changestuff()
+    session = Session()
+    ops = compressed_operations(session.query(models.Operation).all())
+    groups = group_by(lambda op: (op.content_type_id, op.row_id), ops)
+    for g in groups.itervalues():
+        logging.info(g)
+        assert len(g) == 1
+    # TODO further correctness assertions
