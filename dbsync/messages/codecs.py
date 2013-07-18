@@ -4,6 +4,7 @@ Encoding and decoding of specific datatypes.
 
 import datetime
 import time
+import base64
 
 from sqlalchemy import types
 from dbsync.lang import *
@@ -17,8 +18,7 @@ def _encode_table(type_):
     elif isinstance(type_, types.DateTime):
         return lambda value: time.mktime(value.timetuple())
     elif isinstance(type_, types.LargeBinary):
-        # TODO encode in base64
-        return identity
+        return base64.standard_b64encode
     return identity
 
 #: Encodes a python value into a JSON-friendly python value.
@@ -39,8 +39,7 @@ def _decode_table(type_):
     elif isinstance(type_, types.DateTime):
         return datetime.datetime.fromtimestamp
     elif isinstance(type_, types.LargeBinary):
-        # TODO decode from base64
-        return identity
+        return base64.standard_b64decode
     return identity
 
 #: Decodes a value coming from a JSON string into a richer python value.
