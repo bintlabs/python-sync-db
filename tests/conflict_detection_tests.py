@@ -9,6 +9,14 @@ from dbsync.client.conflicts import (
 
 from tests.models import A, B, Base, Session
 
+def get_content_type_ids():
+    session = Session()
+    ct_a = session.query(models.ContentType).filter_by(model_name='A').first()
+    ct_b = session.query(models.ContentType).filter_by(model_name='B').first()
+    return (ct_a.content_type_id, ct_b.content_type_id)
+
+ct_a_id, ct_b_id = get_content_type_ids()
+
 
 def addstuff():
     a1 = A(name="first a")
@@ -30,9 +38,9 @@ def changestuff():
     session.commit()
 
 def create_fake_operations():
-    return [models.Operation(row_id=3, content_type_id=2, command='u'), # b3
-            models.Operation(row_id=1, content_type_id=1, command='d'), # a1
-            models.Operation(row_id=2, content_type_id=1, command='d')] # a2
+    return [models.Operation(row_id=3, content_type_id=ct_b_id, command='u'),
+            models.Operation(row_id=1, content_type_id=ct_a_id, command='d'),
+            models.Operation(row_id=2, content_type_id=ct_a_id, command='d')]
 
 def setup():
     pass
@@ -55,11 +63,11 @@ def test_find_direct_conflicts():
         message_ops, session.query(models.Operation).all())
     expected = [
         (message_ops[0],
-         models.Operation(row_id=3, content_type_id=2, command='d')), # b3
+         models.Operation(row_id=3, content_type_id=ct_b_id, command='d')), # b3
         (message_ops[1],
-         models.Operation(row_id=1, content_type_id=1, command='u')), # a1
+         models.Operation(row_id=1, content_type_id=ct_a_id, command='u')), # a1
         (message_ops[2],
-         models.Operation(row_id=2, content_type_id=1, command='u'))] # a2
+         models.Operation(row_id=2, content_type_id=ct_a_id, command='u'))] # a2
     logging.info(conflicts)
     logging.info(expected)
     assert repr(conflicts) == repr(expected)
@@ -79,11 +87,11 @@ def test_find_dependency_conflicts():
         session)
     expected = [
         (message_ops[1], # a1
-         models.Operation(row_id=1, content_type_id=2, command='i')), # b1
+         models.Operation(row_id=1, content_type_id=ct_b_id, command='i')), # b1
         (message_ops[2], # a2
-         models.Operation(row_id=2, content_type_id=2, command='i')), # b2
+         models.Operation(row_id=2, content_type_id=ct_b_id, command='i')), # b2
         (message_ops[2], # a2
-         models.Operation(row_id=2, content_type_id=2, command='u'))] # b2
+         models.Operation(row_id=2, content_type_id=ct_b_id, command='u'))] # b2
     logging.info(conflicts)
     logging.info(expected)
     assert repr(conflicts) == repr(expected)

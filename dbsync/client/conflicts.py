@@ -1,11 +1,15 @@
 """
-Conflict detection and resolution for the local merge operation.
+Conflict detection for the local merge operation.
 
-This module handles the conflict resolution that's required for the
-local merge operation.
+This module handles the conflict detection that's required for the
+local merge operation. The resolution phase is embedded in the
+dbsync.client.pull module.
 
-TODO: Resolve conflicts according to programmer-given listener
-procedures and/or model-level directives.
+Related reading:
+
+Gerritsen, Jan-Henk. Detecting synchronization conflicts for
+horizontally decentralized relational databases.
+http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf
 """
 
 from sqlalchemy import or_
@@ -168,7 +172,9 @@ def find_reversed_dependency_conflicts(pull_ops,
 def find_insert_conflicts(pull_ops, unversioned_ops):
     """Inserts over the same object. These conflicts should be
     resolved by keeping both objects, but moving the local one out of
-    the way (reinserting it to get a new primary key)."""
+    the way (reinserting it to get a new primary key). It should be
+    possible, however, to specify a custom handler for cases where the
+    primary key is a meaningful property of the object."""
     return [
         (pull_op, local_op)
         for local_op in unversioned_ops

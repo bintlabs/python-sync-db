@@ -24,8 +24,8 @@ def perform(operation, content_types, container, session):
 
     *container* is an instance of dbsync.messages.base.BaseMessage.
 
-    If at any moment this operation fails, it will raise an
-    *OperationError*."""
+    If at any moment this operation fails for predictable causes, it
+    will raise an *OperationError*."""
     ct = lookup(attr("content_type_id") == operation.content_type_id,
                 content_types)
     if ct is None:

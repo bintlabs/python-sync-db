@@ -95,11 +95,14 @@ def generate_content_types():
     Inserts content types into the internal table used to describe
     operations."""
     session = Session()
-    for _, model in sorted(synched_models.items(), key=fst):
+    for mname, model in synched_models.iteritems():
         tname = model.__table__.name
+        content_type_id = hash('{0}/{1}'.format(mname, tname))
         if session.query(ContentType).\
                 filter(ContentType.table_name == tname).count() == 0:
-            session.add(ContentType(table_name=tname, model_name=model.__name__))
+            session.add(ContentType(table_name=tname,
+                                    model_name=mname,
+                                    content_type_id=content_type_id))
     session.commit()
 
 
