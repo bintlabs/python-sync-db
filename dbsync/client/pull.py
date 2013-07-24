@@ -76,8 +76,8 @@ def perform(operation, content_types, container, session):
             operation)
 
 
-@core.with_transaction
 @core.with_listening(False)
+@core.with_transaction
 def merge(pull_message, session=None):
     """Merges a message from the server with the local database.
 
@@ -128,5 +128,3 @@ def merge(pull_message, session=None):
     # second phase: insert versions from the pull_message
     for pull_version in pull_message.versions:
         session.add(pull_version)
-
-    # third phase: is there one?
