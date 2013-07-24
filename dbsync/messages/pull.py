@@ -13,7 +13,7 @@ from dbsync.utils import (
 from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
-from dbsync.models import ContentType, Operation, Version
+from dbsync.models import Operation, Version
 from dbsync.messages.base import ObjectType, MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
@@ -25,8 +25,8 @@ class PullMessage(BaseMessage):
     and can be filtered multiple times.
 
     It can be instantiated from a raw data dictionary, or can be made
-    empty and filled later with specific methods (add_version,
-    add_operation, add_object)."""
+    empty and filled later with specific methods (``add_version``,
+    ``add_operation``, ``add_object``)."""
 
     #: Datetime of creation.
     created = None
@@ -75,7 +75,7 @@ class PullMessage(BaseMessage):
     def to_json(self):
         """Returns a JSON-friendly python dictionary. Structure::
 
-            created: date,
+            created: datetime,
             operations: list of operations,
             versions: list of versions,
             payload: dictionary with lists of objects mapped to model names

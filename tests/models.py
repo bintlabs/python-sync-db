@@ -1,7 +1,10 @@
+import datetime
+
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
+from dbsync.utils import generate_secret
 from dbsync import models, core, client
 
 
@@ -42,3 +45,8 @@ Base.metadata.create_all(engine)
 models.Base.metadata.create_all(engine)
 core.set_engine(engine)
 core.generate_content_types()
+_session = Session()
+_session.add(
+    models.Node(registered=datetime.datetime.now(), secret=generate_secret(128)))
+_session.commit()
+_session.close()

@@ -7,7 +7,7 @@ from dbsync.lang import *
 from dbsync import models
 from dbsync.messages.pull import PullMessage
 
-from tests.models import A, B, Base, Session
+from tests.models import A, B, Session
 
 
 def addstuff():
