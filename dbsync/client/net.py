@@ -1,7 +1,9 @@
 """
 Send HTTP requests and interpret responses.
 
-Sent and received data is expected to be a JSON string.
+The body returned by each procedure will be a python dictionary
+obtained from parsing a JSON response, or ``None`` if the response
+isn't valid JSON.
 
 These procedures will raise a NetworkError in case of network failure.
 """
@@ -9,6 +11,7 @@ These procedures will raise a NetworkError in case of network failure.
 import socket
 import httplib
 import urllib
+import urlparse
 import json
 
 
@@ -19,28 +22,15 @@ _headers = {"Content-Type": "application/json",
             "Accept": "application/json"}
 
 
-def _parsed_selector(selector):
-    """Should probably let a library handle this kind of stuff."""
-    if not selector: return ""
-    parsed = selector
-    if not selector.startswith("/"):
-        parsed = "/" + parsed
-    # if not selector.endswith("/"):
-    #     parts = selector.split("/")
-    #     if "." not in parts[-1]:
-    #         parsed += "/"
-    return parsed
-
-
-def post_request(server_url, selector_url, json_dict):
-    """Sends a POST request to *<server_url>/<selector_url>* with data
-    *json_dict* and returns a trio of (code, reason, body)."""
+def post_request(server_url, json_dict):
+    """Sends a POST request to *server_url* with data *json_dict* and
+    returns a trio of (code, reason, body)."""
+    if not server_url.startswith("http://"):
+        server_url = "http://" + server_url
+    _, netloc, path, _, _, _ = urlparse.urlparse(server_url)
     try:
-        conn = httplib.HTTPConnection(server_url)
-        conn.request("POST",
-                     _parsed_selector(selector_url),
-                     json.dumps(json_dict),
-                     _headers)
+        conn = httplib.HTTPConnection(netloc)
+        conn.request("POST", path, json.dumps(json_dict), _headers)
         response = conn.getresponse()
         body = None
         try:
@@ -53,17 +43,17 @@ def post_request(server_url, selector_url, json_dict):
         raise NetworkError(*e.args)
 
 
-def get_request(server_url, selector_url, data=None):
-    """Sends a GET request to *<server_url>/<selector_url>*. If *data*
-    is to be added, it should be a python dictionary with simple pairs
-    suitable for url encoding. Returns a trio of (code, reason,
-    body)."""
+def get_request(server_url, data=None):
+    """Sends a GET request to *server_url*. If *data* is to be added,
+    it should be a python dictionary with simple pairs suitable for
+    url encoding. Returns a trio of (code, reason, body)."""
+    if not server_url.startswith("http://"):
+        server_url = "http://" + server_url
+    _, netloc, path, _, _, _ = urlparse.urlparse(server_url)
     arguments = ("?" + urllib.urlencode(data)) if data is not None else ""
     try:
-        conn = httplib.HTTPConnection(server_url)
-        conn.request("GET",
-                     _parsed_selector(selector_url) + arguments,
-                     headers=_headers)
+        conn = httplib.HTTPConnection(netloc)
+        conn.request("GET", path + arguments, headers=_headers)
         response = conn.getresponse()
         body = None
         try:
