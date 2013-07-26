@@ -12,6 +12,7 @@ from dbsync.client.conflicts import (
     find_dependency_conflicts,
     find_reversed_dependency_conflicts,
     find_insert_conflicts)
+from dbsync.client.net import get_request
 
 
 class OperationError(Exception): pass
@@ -128,3 +129,30 @@ def merge(pull_message, session=None):
     # second phase: insert versions from the pull_message
     for pull_version in pull_message.versions:
         session.add(pull_version)
+
+
+class BadResponseError(Exception): pass
+
+
+def pull(pull_url):
+    """Attempts a pull from the server.
+
+    The pull operation handling should be configured with specialized
+    listeners given by the programmer.
+
+    If not interrupted, the pull will perform a local merge. If the
+    response from the server isn't appropriate, it will raise a
+    dbysnc.client.pull.BadResponseError."""
+    assert isinstance(pull_url, basestring), "pull url must be a string"
+    assert bool(pull_url), "pull url can't be empty"
+    code, reason, response = get_request(
+        pull_url, {'latest_version_id': core.get_latest_version_id()})
+    if (code // 100 != 2) or response is None:
+        raise BadResponseError(code, reason, response)
+    message = None
+    try:
+        message = PullMessage(response)
+    except KeyError:
+        raise BadResponseError(
+            "response object isn't a valid PullMessage", response)
+    merge(message)

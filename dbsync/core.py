@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from dbsync.lang import *
 from dbsync.utils import get_pk
-from dbsync.models import ContentType, Operation
+from dbsync.models import ContentType, Operation, Version
 
 
 _SessionClass = sessionmaker()
@@ -125,3 +125,16 @@ def is_synched(obj):
     if last_op is None:
         return True
     return last_op.version_id is not None
+
+
+def get_latest_version_id(session=None):
+    """Returns the latest version identifier or ``None`` if no version
+    is found."""
+    closeit = session is None
+    session = Session() if closeit else session
+    # assuming version identifiers grow monotonically
+    # might need to order by 'created' datetime field
+    version = session.query(Version).order_by(Version.version_id.desc()).first()
+    if closeit:
+        session.close()
+    return maybe(version, attr("version_id"), None)

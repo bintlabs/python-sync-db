@@ -13,22 +13,9 @@ from dbsync.utils import (
 from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
-from dbsync.models import Node, Operation, Version
+from dbsync.models import Node, Operation
 from dbsync.messages.base import ObjectType, MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
-
-
-def get_latest_version_id(session=None):
-    """Returns the latest version identifier or ``None`` if no version
-    is found."""
-    closeit = session is None
-    session = Session() if closeit else session
-    # assuming version identifiers grow monotonically
-    # might need to order by 'created' datetime field
-    version = session.query(Version).order_by(Version.version_id.desc()).first()
-    if closeit:
-        session.close()
-    return maybe(version, attr("version_id"), None)
 
 
 class PushMessage(BaseMessage):
@@ -141,10 +128,11 @@ class PushMessage(BaseMessage):
                 self.add_object(parent)
         return self
 
-    def add_unversioned_operations(self):
+    def add_unversioned_operations(self, session=None):
         """Adds all unversioned operations to this message, including
         the required objects for them to be performed."""
-        session = Session()
+        closeit = session is None
+        session = Session() if closeit else session
         operations = session.query(Operation).\
             filter(Operation.version_id == None).all()
         if any(op.content_type.model_name not in synched_models
@@ -154,5 +142,6 @@ class PushMessage(BaseMessage):
                                  "to model not currently being tracked")
         for op in operations:
             self._add_operation(op, session)
-        session.close()
+        if closeit:
+            session.close()
         return self
