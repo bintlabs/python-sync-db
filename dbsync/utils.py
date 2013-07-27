@@ -4,7 +4,11 @@ Utility functions.
 
 import random
 import inspect
-from sqlalchemy.orm import object_mapper, class_mapper, ColumnProperty
+from sqlalchemy.orm import (
+    object_mapper,
+    class_mapper,
+    ColumnProperty,
+    noload)
 
 
 def generate_secret(length=128):
@@ -65,7 +69,13 @@ def parent_objects(sa_object, models, session):
                 return m
         return None
     return filter(lambda obj: obj is not None,
-                  (session.query(m).filter_by(**{get_pk(m): val}).first()
+                  (query_model(session, m).filter_by(**{get_pk(m): val}).first()
                    for val, m in ((v, get_model(table))
                                   for v, table in references)
                    if m is not None))
+
+
+def query_model(session, sa_class):
+    """Returns a query for *sa_class* that doesn't load any
+    relationship attribute."""
+    return session.query(sa_class).options(noload('*'))

@@ -9,7 +9,8 @@ from dbsync.utils import (
     properties_dict,
     object_from_dict,
     get_pk,
-    parent_objects)
+    parent_objects,
+    query_model)
 from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
@@ -117,7 +118,7 @@ class PushMessage(BaseMessage):
         if model is None:
             raise ValueError("operation linked to model %s "\
                                  "which isn't being tracked" % mname)
-        obj = session.query(model).\
+        obj = query_model(session, model).\
             filter_by(**{get_pk(model): op.row_id}).first() \
             if op.command != 'd' else None
         self.operations.append(op)

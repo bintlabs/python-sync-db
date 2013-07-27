@@ -3,7 +3,7 @@ Pull, merge and related operations.
 """
 
 from dbsync.lang import *
-from dbsync.utils import get_pk
+from dbsync.utils import get_pk, query_model
 from dbsync import core
 from dbsync.messages.pull import PullMessage
 from dbsync.client.compression import compress, compressed_operations
@@ -47,7 +47,7 @@ def perform(operation, content_types, container, session):
         session.flush()
 
     elif operation.command == 'u':
-        obj = session.query(model).\
+        obj = query_model(session, model).\
             filter(getattr(model, get_pk(model)) == operation.row_id).first()
         if obj is None:
             raise OperationError(
@@ -63,7 +63,7 @@ def perform(operation, content_types, container, session):
         session.flush()
 
     elif operation.command == 'd':
-        obj = session.query(model).\
+        obj = query_model(session, model).\
             filter(getattr(model, get_pk(model)) == operation.row_id).first()
         if obj is None:
             raise OperationError(

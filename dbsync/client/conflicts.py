@@ -15,7 +15,7 @@ http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf
 from sqlalchemy import or_
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, class_mapper
+from dbsync.utils import get_pk, class_mapper, query_model
 from dbsync.core import synched_models
 from dbsync.models import Operation, ContentType
 
@@ -73,7 +73,7 @@ def related_local_ids(operation, content_types, session):
         for pk, ct in \
             ((getattr(obj, get_pk(obj)), ct_for_model(model))
              for model, fks in mapped_fks
-             for obj in session.query(model).\
+             for obj in query_model(session, model).\
                  filter(or_(*(getattr(model, fk) == operation.row_id
                               for fk in fks))))
         if ct is not None)
