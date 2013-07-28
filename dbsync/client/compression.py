@@ -7,6 +7,32 @@ from dbsync import core
 from dbsync.models import Operation
 
 
+def _assert_operation_sequence(seq):
+    """Asserts the correctness of a sequence of operations over a
+    single tracked object.
+
+    The sequence is given in a sorted state, from newest operation to
+    oldest."""
+    message = "The sequence of operations for the given object "\
+        "<row_id: {0}, content_type_id: {1}> is inconsistent. "\
+        "This might indicate external interference with the synchronization "\
+        "model or, most commonly, the reuse of old primary keys by the "\
+        "database engine. To function properly, the database engine must use "\
+        "unique primary keys through the history of the table "\
+        "(e.g. using AUTO INCREMENT). Operations from old to new: {2}".\
+        format(seq[0].row_id,
+               seq[0].content_type_id,
+               list(reversed(map(attr("command"), seq))))
+    # nothing but updates should happen between beginning and end of
+    # the sequence
+    assert all(op.command == 'u' for op in seq[1:-1]), message
+    if len(seq) > 1:
+        # can't have anything after a delete
+        assert seq[-1] != 'd', message
+        # can't have anything before an insert
+        assert seq[0] != 'i', message
+
+
 def compress():
     """Compresses unversioned operations in the database.
 
@@ -19,6 +45,9 @@ def compress():
     unversioned = session.query(Operation).\
         filter(Operation.version_id == None).order_by(Operation.order.desc())
     seqs = group_by(lambda op: (op.row_id, op.content_type_id), unversioned)
+
+    for seq in seqs.itervalues():
+        _assert_operation_sequence(seq)
 
     for seq in ifilter(lambda seq: len(seq) > 1, seqs.itervalues()):
         if seq[-1].command == 'i':
