@@ -14,14 +14,64 @@ version identifier to the node (and the programmer is tasked to send
 the HTTP response).
 """
 
+import datetime
+
+from dbsync.utils import properties_dict
 from dbsync import core
+from dbsync.models import Version, Node
+from dbsync.messages.pull import PullMessage
+from dbsync.messages.push import PushMessage
 
 
-def handle_pull():
-    pass
+def handle_pull(data):
+    """Handle the pull request and return a dictionary object to be
+    sent back to the node.
+
+    *data* must be a dictionary-like object, usually one containing
+    the GET parameters of the request."""
+    session = core.Session()
+    latest_version_id = data.get('latest_version_id', None)
+    versions = session.query(Version)
+    if latest_version_id is not None:
+        versions = versions.filter(Version.version_id > latest_version_id)
+    message = PullMessage()
+    for v in versions:
+        message.add_version(v, session=session)
+    session.close()
+    return message.to_json()
+
+
+class PushRejected(Exception): pass
 
 
 @core.with_listening(False)
 @core.with_transaction
-def handle_push(session=None):
+def handle_push(data, session=None):
+    """Handle the push request and return a dictionary object to be
+    sent back to the node.
+
+    If the push is rejected, this procedure will raise a
+    dbsync.server.handlers.PushRejected exception.
+
+    *data* must be a dictionary-like object, usually the product of
+    parsing a JSON string."""
+    message = None
+    try:
+        message = PushMessage(data)
+    except KeyError:
+        raise PushRejected("request object isn't a valid PushMessage", data)
+    latest_version_id = core.get_latest_version_id()
+    if latest_version_id != message.latest_version_id:
+        raise PushRejected("version identifier isn't the latest one; "\
+                               "latest: {0}; given {1}".\
+                               format(latest_version_id,
+                                      message.latest_version_id))
+    # ensure the node given exists in database
+    if message.node is None:
+        raise PushRejected("sender node is not specified")
+    node = session.query(Node).\
+        filter(Node.node_id == message.node.node_id).first()
+    if node is None or properties_dict(node) != properties_dict(message.node):
+        raise PushRejected("sender node isn't registered in the server")
+    # TODO push
     pass

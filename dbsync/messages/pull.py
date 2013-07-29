@@ -129,7 +129,7 @@ class PullMessage(BaseMessage):
             session.close()
         return self
 
-    def add_version(self, v):
+    def add_version(self, v, session=None):
         """Adds a version to the message, and all associated
         operations and objects.
 
@@ -140,9 +140,11 @@ class PullMessage(BaseMessage):
                for op in v.operations):
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
-        session = Session()
+        closeit = session is None
+        session = Session() if closeit else session
         self.versions.append(v)
         for op in v.operations:
             self.add_operation(op, session=session)
-        session.close()
+        if closeit:
+            session.close()
         return self

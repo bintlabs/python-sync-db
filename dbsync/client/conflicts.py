@@ -8,8 +8,9 @@ dbsync.client.pull module.
 Related reading:
 
 Gerritsen, Jan-Henk. Detecting synchronization conflicts for
-horizontally decentralized relational databases.
-http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf
+horizontally decentralized relational databases. `Link to pdf`__.
+
+.. __: http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf
 """
 
 from sqlalchemy import or_

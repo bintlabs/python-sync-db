@@ -35,6 +35,27 @@ class ContentType(Base):
             format(self.table_name, self.model_name)
 
 
+class Node(Base):
+    """A node registry.
+
+    A node is a client application installed somewhere else."""
+
+    __tablename__ = "nodes"
+
+    node_id = Column(Integer, primary_key=True)
+    registered = Column(DateTime)
+    registry_user_id = Column(Integer)
+    secret = Column(String(128))
+
+    def __repr__(self):
+        return u"<Node node_id: {0}, registered: {1}, "\
+            u"registry_user_id: {2}, secret: {3}>".\
+            format(self.node_id,
+                   self.registered,
+                   self.registry_user_id,
+                   self.secret)
+
+
 class Version(Base):
     """A database version.
 
@@ -44,7 +65,10 @@ class Version(Base):
     __tablename__ = "versions"
 
     version_id = Column(Integer, primary_key=True)
+    node_id = Column(Integer, ForeignKey(Version.__tablename__ + ".node_id"))
     created = Column(DateTime)
+
+    node = relationship(Node)
 
     def __repr__(self):
         return u"<Version version_id: {0}, created: {1}>".\
@@ -81,24 +105,3 @@ class Operation(Base):
     def __repr__(self):
         return u"<Operation row_id: {0}, content_type_id: {1}, command: {2}>".\
             format(self.row_id, self.content_type_id, self.command)
-
-
-class Node(Base):
-    """A node registry.
-
-    A node is a client application installed somewhere else."""
-
-    __tablename__ = "nodes"
-
-    node_id = Column(Integer, primary_key=True)
-    registered = Column(DateTime)
-    registry_user_id = Column(Integer)
-    secret = Column(String(128))
-
-    def __repr__(self):
-        return u"<Node node_id: {0}, registered: {1}, "\
-            u"registry_user_id: {2}, secret: {3}>".\
-            format(self.node_id,
-                   self.registered,
-                   self.registry_user_id,
-                   self.secret)
