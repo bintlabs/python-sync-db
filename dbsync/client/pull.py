@@ -134,8 +134,11 @@ def merge(pull_message, session=None):
 class BadResponseError(Exception): pass
 
 
-def pull(pull_url):
-    """Attempts a pull from the server.
+def pull(pull_url, extra_data=None):
+    """Attempts a pull from the server. Returns the response body.
+
+    Additional data can be passed to the request by giving
+    *extra_data*, a dictionary of values.
 
     The pull operation handling should be configured with specialized
     listeners given by the programmer.
@@ -145,8 +148,16 @@ def pull(pull_url):
     dbysnc.client.pull.BadResponseError."""
     assert isinstance(pull_url, basestring), "pull url must be a string"
     assert bool(pull_url), "pull url can't be empty"
-    code, reason, response = get_request(
-        pull_url, {'latest_version_id': core.get_latest_version_id()})
+    if extra_data is not None:
+        assert isinstance(extra_data, dict), "extra data must be a dictionary"
+    extra = dict((k, v) for k, v in extra_data.iteritems()
+                 if k != 'latest_version_id') \
+                 if extra_data is not None else {}
+    data = {'latest_version_id': core.get_latest_version_id()}
+    data.update(extra)
+
+    code, reason, response = get_request(pull_url, data)
+
     if (code // 100 != 2) or response is None:
         raise BadResponseError(code, reason, response)
     message = None
@@ -156,3 +167,6 @@ def pull(pull_url):
         raise BadResponseError(
             "response object isn't a valid PullMessage", response)
     merge(message)
+    # return the response for the programmer to do what she wants
+    # afterwards
+    return response

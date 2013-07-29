@@ -16,8 +16,11 @@ class PushRejected(Exception): pass
 
 
 @core.with_transaction
-def push(push_url, session=None):
-    """Attempts a push to the server.
+def push(push_url, extra_data=None, session=None):
+    """Attempts a push to the server. Returns the response body.
+
+    Additional data can be passed to the request by giving
+    *extra_data*, a dictionary of values.
 
     If not interrupted, the push will add a new version to the
     database, and will link all unversioned operations to that newly
@@ -27,12 +30,18 @@ def push(push_url, session=None):
     dbsync.client.push.PushRejected exception."""
     assert isinstance(push_url, basestring), "push url must be a string"
     assert bool(push_url), "push url can't be empty"
+    if extra_data is not None:
+        assert isinstance(extra_data, dict), "extra data must be a dictionary"
     message = PushMessage()
     message.node = session.query(Node).first()
     message.latest_version_id = core.get_latest_version_id(session)
     compress()
     message.add_unversioned_operations(session)
-    code, reason, response = post_request(push_url, message.to_json())
+    data = message.to_json()
+    data.update({'extra_data': extra_data or {}})
+
+    code, reason, response = post_request(push_url, data)
+
     if (code // 100 != 2) or response is None:
         raise PushRejected(code, reason, response)
     new_version_id = response.get('new_version_id')
@@ -44,3 +53,6 @@ def push(push_url, session=None):
         Version(version_id=new_version_id, created=datetime.datetime.now()))
     for op in message.operations:
         op.version_id = new_version_id
+    # return the response for the programmer to do what she wants
+    # afterwards
+    return response

@@ -7,6 +7,7 @@ yet.
 """
 
 from dbsync.client.tracking import track
-from dbsync.client.settings import configure_networking
+from dbsync.client.pull import pull
+from dbsync.client.push import push
 
-# TODO export list
+# TODO hooks for listeners, registry

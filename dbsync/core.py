@@ -117,14 +117,11 @@ def is_synched(obj):
     if ct is None:
         raise TypeError("the given object of class {0} isn't being tracked".\
                             format(obj.__class__.__name__))
-    pk_name = get_pk(obj)
     last_op = session.query(Operation).\
         filter(Operation.content_type_id == ct.content_type_id,
-               Operation.row_id == getattr(obj, pk_name)).\
+               Operation.row_id == getattr(obj, get_pk(obj))).\
                order_by(Operation.order.desc()).first()
-    if last_op is None:
-        return True
-    return last_op.version_id is not None
+    return last_op is None or last_op.version_id is not None
 
 
 def get_latest_version_id(session=None):
