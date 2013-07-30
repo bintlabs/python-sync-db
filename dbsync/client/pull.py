@@ -3,7 +3,6 @@ Pull, merge and related operations.
 """
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, query_model
 from dbsync import core
 from dbsync.messages.pull import PullMessage
 from dbsync.client.compression import compress, compressed_operations
@@ -13,68 +12,6 @@ from dbsync.client.conflicts import (
     find_reversed_dependency_conflicts,
     find_insert_conflicts)
 from dbsync.client.net import get_request
-
-
-class OperationError(Exception): pass
-
-
-def perform(operation, content_types, container, session):
-    """Performs *operation*, looking for required data and metadata in
-    *content_types* and *container*, and using *session* to perform
-    it.
-
-    *container* is an instance of dbsync.messages.base.BaseMessage.
-
-    If at any moment this operation fails for predictable causes, it
-    will raise an *OperationError*."""
-    ct = lookup(attr("content_type_id") == operation.content_type_id,
-                content_types)
-    if ct is None:
-        raise OperationError("no content type for this operation", operation)
-    model = lookup(attr("__name__") == ct.model_name,
-                   core.synched_models.itervalues())
-    if model is None:
-        raise OperationError("no model for this operation", operation)
-
-    if operation.command == 'i':
-        objs = container.query(model).\
-            filter(attr("__pk__") == operation.row_id).all()
-        if not objs:
-            raise OperationError(
-                "no object backing the operation in container", operation)
-        obj = objs[0]
-        session.add(obj)
-        session.flush()
-
-    elif operation.command == 'u':
-        obj = query_model(session, model).\
-            filter(getattr(model, get_pk(model)) == operation.row_id).first()
-        if obj is None:
-            raise OperationError(
-                "the referenced object doesn't exist in database", operation)
-        pull_objs = container.query(model).\
-            filter(attr("__pk__") == operation.row_id).all()
-        if not pull_objs:
-            raise OperationError(
-                "no object backing the operation in container", operation)
-        pull_obj = pull_objs[0]
-        for k, v in properties_dict(pull_obj):
-            setattr(obj, k, v)
-        session.flush()
-
-    elif operation.command == 'd':
-        obj = query_model(session, model).\
-            filter(getattr(model, get_pk(model)) == operation.row_id).first()
-        if obj is None:
-            raise OperationError(
-                "the referenced object doesn't exist in database", operation)
-        session.delete(obj)
-        session.flush()
-
-    else:
-        raise OperationError(
-            "the operation doesn't specify a valid command ('i', 'u', 'd')",
-            operation)
 
 
 @core.with_listening(False)
@@ -124,7 +61,10 @@ def merge(pull_message, session=None):
             pass
 
         if can_perform:
-            perform(pull_op, content_types, pull_message, session)
+            pull_op.perform(content_types,
+                            core.synched_models,
+                            pull_message,
+                            session)
 
     # second phase: insert versions from the pull_message
     for pull_version in pull_message.versions:
