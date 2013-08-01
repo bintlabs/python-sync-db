@@ -18,7 +18,12 @@ import datetime
 
 from dbsync.utils import properties_dict
 from dbsync import core
-from dbsync.models import Version, Node
+from dbsync.models import (
+    Version,
+    Node,
+    ContentType,
+    OperationError,
+    Operation)
 from dbsync.messages.pull import PullMessage
 from dbsync.messages.push import PushMessage
 
@@ -63,9 +68,7 @@ def handle_push(data, session=None):
     latest_version_id = core.get_latest_version_id()
     if latest_version_id != message.latest_version_id:
         raise PushRejected("version identifier isn't the latest one; "\
-                               "latest: {0}; given {1}".\
-                               format(latest_version_id,
-                                      message.latest_version_id))
+                               "given: %d" % message.latest_version_id)
     # ensure the node given exists in database
     if message.node is None:
         raise PushRejected("sender node is not specified")
@@ -73,5 +76,24 @@ def handle_push(data, session=None):
         filter(Node.node_id == message.node.node_id).first()
     if node is None or properties_dict(node) != properties_dict(message.node):
         raise PushRejected("sender node isn't registered in the server")
-    # TODO push
-    pass
+    # perform the operations
+    try:
+        content_types = session.query(ContentType).all()
+        for op in message.operations:
+            op.perform(content_types, core.synched_models, message, session)
+    except OperationError as e:
+        raise PushRejected("at least one operation couldn't be performed",
+                           *e.args)
+    # insert a new version
+    version = Version(created=datetime.datetime.now())
+    session.add(version)
+    # insert the operations, discarding the 'order' column
+    for op in sorted(message.operations, key=attr("order")):
+        new_op = Operation()
+        for k in ifilter(lambda k: k != 'order', properties_dict(op)):
+            setattr(new_op, k, getattr(op, k))
+        session.add(new_op)
+        new_op.version = version
+        session.flush()
+    # return the new version id back to the node
+    return {'new_version_id': version.version_id}

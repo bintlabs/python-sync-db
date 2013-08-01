@@ -126,8 +126,7 @@ class Operation(Base):
                     content_types)
         if ct is None:
             raise OperationError("no content type for this operation", operation)
-        model = lookup(attr("__name__") == ct.model_name,
-                       synched_models.itervalues())
+        model = synched_models.get(ct.model_name, None)
         if model is None:
             raise OperationError("no model for this operation", operation)
 
@@ -139,7 +138,6 @@ class Operation(Base):
                     "no object backing the operation in container", operation)
             obj = objs[0]
             session.add(obj)
-            session.flush()
 
         elif operation.command == 'u':
             obj = query_model(session, model).\
@@ -155,7 +153,6 @@ class Operation(Base):
             pull_obj = pull_objs[0]
             for k, v in properties_dict(pull_obj):
                 setattr(obj, k, v)
-            session.flush()
 
         elif operation.command == 'd':
             obj = query_model(session, model).\
@@ -164,7 +161,6 @@ class Operation(Base):
                 raise OperationError(
                     "the referenced object doesn't exist in database", operation)
             session.delete(obj)
-            session.flush()
 
         else:
             raise OperationError(

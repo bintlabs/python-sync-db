@@ -9,7 +9,7 @@ from dbsync.utils import get_pk
 from dbsync.models import ContentType, Operation, Version
 
 
-_SessionClass = sessionmaker()
+_SessionClass = sessionmaker(autoflush=False)
 Session = lambda: _SessionClass(bind=get_engine())
 
 
