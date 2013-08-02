@@ -8,7 +8,7 @@ from dbsync.utils import generate_secret
 from dbsync import models, core, client
 
 
-engine = create_engine("sqlite://")
+engine = create_engine("sqlite://", echo=True)
 Session = sessionmaker(bind=engine)
 
 

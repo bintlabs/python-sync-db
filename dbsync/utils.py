@@ -8,7 +8,8 @@ from sqlalchemy.orm import (
     object_mapper,
     class_mapper,
     ColumnProperty,
-    noload)
+    noload,
+    defer)
 
 
 def generate_secret(length=128):
@@ -75,7 +76,15 @@ def parent_objects(sa_object, models, session):
                    if m is not None))
 
 
-def query_model(session, sa_class):
+def query_model(session, sa_class, only_pk=False):
     """Returns a query for *sa_class* that doesn't load any
     relationship attribute."""
-    return session.query(sa_class).options(noload('*'))
+    opts = (noload('*'),)
+    if only_pk:
+        pk = get_pk(sa_class)
+        opts += tuple(
+            defer(prop.key)
+            for prop in class_mapper(sa_class).iterate_properties
+            if isinstance(prop, ColumnProperty)
+            if prop.key != pk)
+    return session.query(sa_class).options(*opts)

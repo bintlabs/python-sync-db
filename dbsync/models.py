@@ -155,7 +155,7 @@ class Operation(Base):
                 setattr(obj, k, v)
 
         elif operation.command == 'd':
-            obj = query_model(session, model).\
+            obj = query_model(session, model, only_pk=True).\
                 filter(getattr(model, get_pk(model)) == operation.row_id).first()
             if obj is None:
                 raise OperationError(
