@@ -15,7 +15,7 @@ from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
 from dbsync.models import Node, Operation
-from dbsync.messages.base import ObjectType, MessageQuery, BaseMessage
+from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
 
@@ -54,7 +54,7 @@ class PushMessage(BaseMessage):
         """*raw_data* must be a python dictionary. If not given, the
         message will be empty and should be filled after
         instantiation."""
-        super(PushMessage, self).__init__()
+        super(PushMessage, self).__init__(raw_data)
         if raw_data is not None:
             self._build_from_raw(raw_data)
         else:
@@ -70,13 +70,6 @@ class PushMessage(BaseMessage):
             data['latest_version_id'])
         self.operations = map(partial(object_from_dict, Operation),
                               imap(decode_dict(Operation), data['operations']))
-        getm = synched_models.get
-        for k, v, m in ifilter(lambda (k, v, m): m is not None,
-                               imap(lambda (k, v): (k, v, getm(k, None)),
-                                    data['payload'].iteritems())):
-            self.payload[k] = set(
-                map(lambda dict_: ObjectType(k, dict_[get_pk(m)], **dict_),
-                    imap(decode_dict(m), v)))
 
     def query(self, model):
         """Returns a query object for this message."""
@@ -96,7 +89,7 @@ class PushMessage(BaseMessage):
             operations: list of operations,
             payload: dictionay with lists of objects mapped to model names
         """
-        encoded = {}
+        encoded = super(PushMessage, self).to_json()
         encoded['created'] = encode(types.DateTime())(self.created)
         encoded['node'] = encode_dict(Node)(properties_dict(self.node)) \
             if self.node is not None else None
@@ -104,12 +97,6 @@ class PushMessage(BaseMessage):
             self.latest_version_id)
         encoded['operations'] = map(encode_dict(Operation),
                                     imap(properties_dict, self.operations))
-        encoded['payload'] = {}
-        for k, objects in self.payload.iteritems():
-            model = synched_models.get(k, None)
-            if model is not None:
-                encoded['payload'][k] = map(encode_dict(model),
-                                            imap(method("to_dict"), objects))
         return encoded
 
     def _add_operation(self, op, session):

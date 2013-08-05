@@ -8,6 +8,7 @@ from dbsync.lang import *
 from dbsync.utils import get_pk, properties_dict
 from dbsync.core import synched_models
 from dbsync import models
+from dbsync.messages.codecs import decode_dict, encode_dict
 
 
 class ObjectType(object):
@@ -101,12 +102,34 @@ class BaseMessage(object):
     #: dictionary of (model name, set of wrapped objects)
     payload = None
 
-    def __init__(self):
+    def __init__(self, raw_data=None):
         self.payload = {}
+        if raw_data is not None:
+            self._from_raw(raw_data)
+
+    def _from_raw(self, data):
+        getm = synched_models.get
+        for k, v, m in ifilter(lambda (k, v, m): m is not None,
+                               imap(lambda (k, v): (k, v, getm(k, None)),
+                                    data['payload'].iteritems())):
+            self.payload[k] = set(
+                map(lambda dict_: ObjectType(k, dict_[get_pk(m)], **dict_),
+                    imap(decode_dict(m), v)))
 
     def query(self, model):
         """Returns a query object for this message."""
         return MessageQuery(model, self.payload)
+
+    def to_json(self):
+        """Returns a JSON-friendly python dictionary."""
+        encoded = {}
+        encoded['payload'] = {}
+        for k, objects in self.payload.iteritems():
+            model = synched_models.get(k, None)
+            if model is not None:
+                encoded['payload'][k] = map(encode_dict(model),
+                                            imap(method("to_dict"), objects))
+        return encoded
 
     def add_object(self, obj):
         """Adds an object to the message, if it's not already in."""
