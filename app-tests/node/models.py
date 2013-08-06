@@ -1,15 +1,22 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, create_engine
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
+
+import dbsync
+from dbsync import client
 
 
 engine = create_engine("sqlite:///node.db")
-Session = sessionmaker(bind=engine)
+
+
+dbsync.set_engine(engine)
 
 
 Base = declarative_base()
+Base.__table_args__ = {'sqlite_autoincrement': True,}
 
 
+@client.track
 class City(Base):
 
     __tablename__ = "city"
@@ -21,6 +28,7 @@ class City(Base):
         return u"<City id: {0}; name: {1}>".format(self.id, self.name)
 
 
+@client.track
 class House(Base):
 
     __tablename__ = "house"
@@ -36,6 +44,7 @@ class House(Base):
             self.id, self.address, self.city_id)
 
 
+@client.track
 class Person(Base):
 
     __tablename__ = "person"
@@ -60,3 +69,5 @@ class Person(Base):
 
 
 Base.metadata.create_all(engine)
+dbsync.create_all()
+dbsync.generate_content_types()

@@ -5,10 +5,11 @@ from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
 from dbsync.utils import generate_secret
-from dbsync import models, core, client
+import dbsync
+from dbsync import client, models
 
 
-engine = create_engine("sqlite://", echo=True)
+engine = create_engine("sqlite://")
 Session = sessionmaker(bind=engine)
 
 
@@ -42,9 +43,9 @@ class B(Base):
 
 
 Base.metadata.create_all(engine)
-models.Base.metadata.create_all(engine)
-core.set_engine(engine)
-core.generate_content_types()
+dbsync.set_engine(engine)
+dbsync.create_all()
+dbsync.generate_content_types()
 _session = Session()
 _session.add(
     models.Node(registered=datetime.datetime.now(), secret=generate_secret(128)))

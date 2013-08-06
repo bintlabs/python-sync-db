@@ -34,8 +34,8 @@ class ContentType(Base):
     model_name = Column(String)
 
     def __repr__(self):
-        return u"<ContentType table_name: {0}, model_name: {1}>".\
-            format(self.table_name, self.model_name)
+        return u"<ContentType id: {0}, table_name: {1}, model_name: {2}>".\
+            format(self.content_type_id, self.table_name, self.model_name)
 
 
 class Node(Base):

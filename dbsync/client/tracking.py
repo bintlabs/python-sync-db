@@ -3,11 +3,28 @@ Listeners to SQLAlchemy events to keep track of CUD operations.
 """
 
 import logging
+from collections import deque
 
 from sqlalchemy import event
+from sqlalchemy.orm.session import Session as GlobalSession
 
 from dbsync import core
 from dbsync.models import Operation, ContentType
+
+
+#: Operations to be flushed to the database after a commit.
+_operations_queue = deque()
+
+
+def flush_operations(_):
+    """Flush operations after a commit has been issued."""
+    if not _operations_queue: return
+    session = core.Session()
+    while _operations_queue:
+        op = _operations_queue.popleft()
+        session.add(op)
+        session.flush()
+    session.commit()
 
 
 def make_listener(command):
@@ -28,8 +45,7 @@ def make_listener(command):
             version_id=None, # operation not yet versioned
             content_type_id=ct.content_type_id,
             command=command)
-        session.add(op)
-        session.commit()
+        _operations_queue.append(op)
     return listener
 
 
@@ -45,3 +61,6 @@ def track(model):
     event.listen(model, 'after_update', make_listener('u'))
     event.listen(model, 'after_delete', make_listener('d'))
     return model
+
+
+event.listen(GlobalSession, "after_commit", flush_operations)
