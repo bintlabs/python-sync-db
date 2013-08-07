@@ -10,10 +10,11 @@ except ValueError:
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
+import json
 from flask import Flask, request
 import models
 
-from dbsync import models as synchmodels
+from dbsync import models as synchmodels, server
 
 
 app = Flask(__name__)
@@ -35,12 +36,12 @@ def root():
 
 @app.route("/pull", methods=["GET"])
 def pull():
-    return "Pull placeholder"
+    return json.dumps(server.handle_pull(request.args))
 
 
 @app.route("/push", methods=["POST"])
 def push():
-    return "Push placeholder"
+    return json.dumps(server.handle_push(request.json))
 
 
 @app.route("/query", methods=["GET"])

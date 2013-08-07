@@ -16,6 +16,7 @@ the HTTP response).
 
 import datetime
 
+from dbsync.lang import *
 from dbsync.utils import properties_dict
 from dbsync import core
 from dbsync.models import (
@@ -70,12 +71,12 @@ def handle_push(data, session=None):
         raise PushRejected("version identifier isn't the latest one; "\
                                "given: %d" % message.latest_version_id)
     # ensure the node given exists in database
-    if message.node is None:
-        raise PushRejected("sender node is not specified")
-    node = session.query(Node).\
-        filter(Node.node_id == message.node.node_id).first()
-    if node is None or properties_dict(node) != properties_dict(message.node):
-        raise PushRejected("sender node isn't registered in the server")
+    # if message.node is None:
+    #     raise PushRejected("sender node is not specified")
+    # node = session.query(Node).\
+    #     filter(Node.node_id == message.node.node_id).first()
+    # if node is None or properties_dict(node) != properties_dict(message.node):
+    #     raise PushRejected("sender node isn't registered in the server")
     # perform the operations
     try:
         content_types = session.query(ContentType).all()

@@ -4,6 +4,7 @@ Pull, merge and related operations.
 
 from dbsync.lang import *
 from dbsync import core
+from dbsync.models import ContentType, Operation
 from dbsync.messages.pull import PullMessage
 from dbsync.client.compression import compress, compressed_operations
 from dbsync.client.conflicts import (
