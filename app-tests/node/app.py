@@ -12,3 +12,4 @@ if base_dir not in sys.path:
 
 
 import controller as crud
+from dbsync import client

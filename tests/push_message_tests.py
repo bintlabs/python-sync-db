@@ -3,7 +3,7 @@ import datetime
 import logging
 import json
 
-from dbsync import models
+from dbsync import models, core
 from dbsync.messages.push import PushMessage
 
 from tests.models import A, B, Session
@@ -31,6 +31,7 @@ def changestuff():
 def setup():
     pass
 
+@core.with_listening(False)
 def teardown():
     session = Session()
     map(session.delete, session.query(A))

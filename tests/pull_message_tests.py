@@ -4,7 +4,7 @@ import logging
 import json
 
 from dbsync.lang import *
-from dbsync import models
+from dbsync import models, core
 from dbsync.messages.pull import PullMessage
 
 from tests.models import A, B, Session
@@ -22,12 +22,16 @@ def addstuff():
     version.created = datetime.datetime.now()
     session.add(version)
     session.flush()
+    version_id = version.version_id
+    session.commit()
+    session = Session()
     for op in session.query(models.Operation):
-        op.version_id = version.version_id
+        op.version_id = version_id
     session.commit()
 
 def setup(): pass
 
+@core.with_listening(False)
 def teardown():
     session = Session()
     map(session.delete, session.query(A))

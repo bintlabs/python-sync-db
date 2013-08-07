@@ -18,7 +18,7 @@ _operations_queue = deque()
 
 def flush_operations(_):
     """Flush operations after a commit has been issued."""
-    if not _operations_queue: return
+    if not _operations_queue or not core.listening: return
     session = core.Session()
     while _operations_queue:
         op = _operations_queue.popleft()

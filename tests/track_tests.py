@@ -30,6 +30,7 @@ def changestuff():
 def setup():
     pass
 
+@core.with_listening(False)
 def teardown():
     session = Session()
     map(session.delete, session.query(A))

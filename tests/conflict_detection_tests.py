@@ -1,7 +1,7 @@
 import logging
 from nose.tools import *
 
-from dbsync import models
+from dbsync import models, core
 from dbsync.messages.pull import PullMessage
 from dbsync.client.conflicts import (
     find_direct_conflicts,
@@ -45,6 +45,7 @@ def create_fake_operations():
 def setup():
     pass
 
+@core.with_listening(False)
 def teardown():
     session = Session()
     map(session.delete, session.query(A))
