@@ -27,6 +27,12 @@ def flush_operations(_):
     session.commit()
 
 
+def empty_queue(*_):
+    """Empty the operations queue."""
+    while _operations_queue:
+        _operations_queue.pop()
+
+
 def make_listener(command):
     """Builds a listener for the given command (i, u, d)."""
     def listener(mapper, connection, target):
@@ -64,3 +70,4 @@ def track(model):
 
 
 event.listen(GlobalSession, "after_commit", flush_operations)
+event.listen(GlobalSession, "after_soft_rollback", empty_queue)
