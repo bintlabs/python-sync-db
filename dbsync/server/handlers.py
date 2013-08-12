@@ -37,6 +37,10 @@ def handle_pull(data):
     the GET parameters of the request."""
     session = core.Session()
     latest_version_id = data.get('latest_version_id', None)
+    try:
+        latest_version_id = int(latest_version_id)
+    except ValueError:
+        latest_version_id = None
     versions = session.query(Version)
     if latest_version_id is not None:
         versions = versions.filter(Version.version_id > latest_version_id)
