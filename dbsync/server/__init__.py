@@ -6,6 +6,4 @@ customizable registry service.
 """
 
 from dbsync.server.tracking import track
-from dbsync.server.handlers import handle_pull, handle_push
-
-# TODO export registry handler
+from dbsync.server.handlers import handle_register, handle_pull, handle_push

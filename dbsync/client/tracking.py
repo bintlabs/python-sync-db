@@ -29,6 +29,7 @@ def flush_operations(_):
 
 def empty_queue(*_):
     """Empty the operations queue."""
+    if not core.listening: return
     while _operations_queue:
         _operations_queue.pop()
 

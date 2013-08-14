@@ -28,23 +28,36 @@ def enc(string):
 
 @app.route("/")
 def root():
-    return 'Pull: GET <a href="/pull">/pull</a><br />'\
+    return 'Register: POST /register<br />'\
+        'Pull: GET <a href="/pull">/pull</a><br />'\
         'Push: POST /push<br />'\
         'Query: GET <a href="/query">/query</a><br />'\
         'Synch query: GET <a href="/synch">/synch</a>'
 
 
+@app.route("/register", methods=["POST"])
+def register():
+    # TODO handle register request
+    return ""
+
+
 @app.route("/pull", methods=["GET"])
 def pull():
-    return json.dumps(server.handle_pull(request.args))
+    return (json.dumps(server.handle_pull(request.args)),
+            200,
+            {"Content-Type": "application/json"})
 
 
 @app.route("/push", methods=["POST"])
 def push():
     try:
-        return json.dumps(server.handle_push(request.json))
+        return (json.dumps(server.handle_push(request.json)),
+                200,
+                {"Content-Type": "application/json"})
     except server.handlers.PushRejected as e:
-        return json.dums({'error': [repr(arg) for arg in e.args]})
+        return (json.dums({'error': [repr(arg) for arg in e.args]}),
+                400,
+                {"Content-Type": "application/json"})
 
 
 @app.route("/query", methods=["GET"])

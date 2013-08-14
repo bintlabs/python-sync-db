@@ -25,10 +25,12 @@ def set_engine(engine):
     _engine = engine
 
 
+class ConfigurationError(Exception): pass
+
 def get_engine():
     """Returns a defined (not None) engine."""
     if _engine is None:
-        raise ValueError("database engine hasn't been set yet")
+        raise ConfigurationError("database engine hasn't been set yet")
     return _engine
 
 

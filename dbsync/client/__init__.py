@@ -7,7 +7,6 @@ yet.
 """
 
 from dbsync.client.tracking import track
+from dbsync.client.register import register, isregistered
 from dbsync.client.pull import pull
 from dbsync.client.push import push
-
-# TODO hooks for listeners, registry

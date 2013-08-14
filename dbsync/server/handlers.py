@@ -1,5 +1,5 @@
 """
-Pull and push request handlers.
+Registry, pull and push request handlers.
 
 The pull cycle consists in receiving a version identifier and sending
 back a PullMessage filled with versions above the one received.
@@ -17,7 +17,7 @@ tasked to send the HTTP response).
 import datetime
 
 from dbsync.lang import *
-from dbsync.utils import properties_dict
+from dbsync.utils import generate_secret, properties_dict
 from dbsync import core
 from dbsync.models import (
     Version,
@@ -25,8 +25,28 @@ from dbsync.models import (
     ContentType,
     OperationError,
     Operation)
+from dbsync.messages.register import RegisterMessage
 from dbsync.messages.pull import PullMessage
 from dbsync.messages.push import PushMessage
+
+
+@core.with_listening(False)
+@core.with_transaction
+def handle_register(user_id=None, session=None):
+    """Handle a registry request, creating a new node, wrapping it in
+    a message and returning it to the client node.
+
+    *user_id* can be a key to a user record, which will be set in the
+    node record itself."""
+    newnode = Node()
+    newnode.registered = datetime.datetime.now()
+    newnode.registry_user_id = user_id
+    newnode.secret = generate_secret(128)
+    session.add(newnode)
+    session.flush()
+    message = RegistryMessage()
+    message.node = newnode
+    return message.to_json()
 
 
 def handle_pull(data):
@@ -39,7 +59,7 @@ def handle_pull(data):
     latest_version_id = data.get('latest_version_id', None)
     try:
         latest_version_id = int(latest_version_id)
-    except ValueError:
+    except (ValueError, TypeError):
         latest_version_id = None
     versions = session.query(Version)
     if latest_version_id is not None:
