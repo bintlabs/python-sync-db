@@ -108,10 +108,17 @@ class PushMessage(BaseMessage):
 
     def _portion(self):
         """Returns part of this message as a string."""
-        return self.created.isoformat()[:19]
+        portion = self.created.isoformat()[:19]
+        for k in sorted(self.payload):
+            things = self.payload[k]
+            if len(portion) > 128:
+                return portion
+            portion += repr(things)
+        return portion
 
     def set_node(self, node):
         """Sets the node and key for this message."""
+        if node is None: return
         self.node_id = node.node_id
         self.key = hashlib.sha512(node.secret + self._portion()).hexdigest()
 
