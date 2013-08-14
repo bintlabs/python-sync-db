@@ -3,6 +3,7 @@ Push message and related.
 """
 
 import datetime
+import hashlib
 
 from sqlalchemy import types
 from dbsync.utils import (
@@ -30,19 +31,26 @@ class PushMessage(BaseMessage):
     be made empty and filled later with the
     ``add_unversioned_operations`` method, in which case the node
     attribute and the latest version identifier should be assigned
-    explicitly as well.
+    explicitly as well. The method ``set_node`` is required to be used
+    for proper key generation.
 
     If the node is not assigned the message will still behave
     normally, since verification of its presence is not enforced on
-    the client, and could not be enforced on the server. Likewise, if
+    the client, and might not be enforced on the server. Likewise, if
     the latest version isn't assigned, it'll be just interpreted on
-    the server to be the initial data load."""
+    the server to be the initial data load.
+
+    To verify correctness, use ``islegit`` giving a session with
+    access to the synch database."""
 
     #: Datetime of creation
     created = None
 
-    #: Node information
-    node = None
+    #: Node primary key
+    node_id = None
+
+    #: Key to this message
+    key = None
 
     #: The latest version
     latest_version_id = None
@@ -63,9 +71,8 @@ class PushMessage(BaseMessage):
 
     def _build_from_raw(self, data):
         self.created = decode(types.DateTime())(data['created'])
-        decode_node = lambda dict_: object_from_dict(Node,
-                                                     decode_dict(Node)(dict_))
-        self.node = guard(decode_node)(data['node'])
+        self.node_id = decode(types.Integer())(data['node_id'])
+        self.key = decode(types.String())(data['key'])
         self.latest_version_id = decode(types.Integer())(
             data['latest_version_id'])
         self.operations = map(partial(object_from_dict, Operation),
@@ -77,27 +84,44 @@ class PushMessage(BaseMessage):
             model,
             dict(
                 self.payload,
-                **{'models.Operation': self.operations,
-                   'models.Node': [self.node] if self.node is not None else []}))
+                **{'models.Operation': self.operations}))
 
     def to_json(self):
         """Returns a JSON-friendly python dictionary. Structure::
 
             created: datetime,
-            node: node object or null,
+            node_id: node primary key or null,
+            key: a string generated from the secret and part of the message,
             latest_version_id: number or null,
             operations: list of operations,
             payload: dictionay with lists of objects mapped to model names
         """
         encoded = super(PushMessage, self).to_json()
         encoded['created'] = encode(types.DateTime())(self.created)
-        encoded['node'] = encode_dict(Node)(properties_dict(self.node)) \
-            if self.node is not None else None
+        encoded['node_id'] = encode(types.Integer())(self.node_id)
+        encoded['key'] = encode(types.String())(self.key)
         encoded['latest_version_id'] = encode(types.Integer())(
             self.latest_version_id)
         encoded['operations'] = map(encode_dict(Operation),
                                     imap(properties_dict, self.operations))
         return encoded
+
+    def _portion(self):
+        """Returns part of this message as a string."""
+        return self.created.isoformat()[:19]
+
+    def set_node(self, node):
+        """Sets the node and key for this message."""
+        self.node_id = node.node_id
+        self.key = hashlib.sha512(node.secret + self._portion()).hexdigest()
+
+    def islegit(self, session):
+        """Checks whether the key for this message is proper."""
+        if self.key is None or self.node_id is None: return False
+        node = query_model(session, Node).\
+            filter(Node.node_id == self.node_id).one()
+        return self.key == hashlib.sha512(node.secret + self._portion()).\
+            hexdigest()
 
     def _add_operation(self, op, session):
         mname = op.content_type.model_name

@@ -33,7 +33,7 @@ def push(push_url, extra_data=None, session=None):
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
     message = PushMessage()
-    message.node = session.query(Node).first()
+    message.set_node(session.query(Node).first())
     message.latest_version_id = core.get_latest_version_id(session)
     compress()
     message.add_unversioned_operations(session)

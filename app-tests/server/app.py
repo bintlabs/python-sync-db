@@ -41,7 +41,10 @@ def pull():
 
 @app.route("/push", methods=["POST"])
 def push():
-    return json.dumps(server.handle_push(request.json))
+    try:
+        return json.dumps(server.handle_push(request.json))
+    except server.handlers.PushRejected as e:
+        return json.dums({'error': [repr(arg) for arg in e.args]})
 
 
 @app.route("/query", methods=["GET"])

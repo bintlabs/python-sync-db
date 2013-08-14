@@ -5,13 +5,13 @@ The pull cycle consists in receiving a version identifier and sending
 back a PullMessage filled with versions above the one received.
 
 The push cycle consists in receiving a complete PushMessage and either
-rejecting it based on latest version, or accepting it and performing
-the operations indicated in it. The operations should also be inserted
-in the operations table, in the correct order but getting new keys for
-the 'order' column, and linked with a newly created version. If it
-accepts the message, the push handler should also return the new
-version identifier to the node (and the programmer is tasked to send
-the HTTP response).
+rejecting it based on latest version or signature, or accepting it and
+performing the operations indicated in it. The operations should also
+be inserted in the operations table, in the correct order but getting
+new keys for the 'order' column, and linked with a newly created
+version. If it accepts the message, the push handler should also
+return the new version identifier to the node (and the programmer is
+tasked to send the HTTP response).
 """
 
 import datetime
@@ -74,13 +74,8 @@ def handle_push(data, session=None):
     if latest_version_id != message.latest_version_id:
         raise PushRejected("version identifier isn't the latest one; "\
                                "given: %d" % message.latest_version_id)
-    # ensure the node given exists in database
-    # if message.node is None:
-    #     raise PushRejected("sender node is not specified")
-    # node = session.query(Node).\
-    #     filter(Node.node_id == message.node.node_id).first()
-    # if node is None or properties_dict(node) != properties_dict(message.node):
-    #     raise PushRejected("sender node isn't registered in the server")
+    if not message.islegit(session):
+        raise PushRejected("message isn't properly signed")
     # perform the operations
     try:
         content_types = session.query(ContentType).all()
@@ -90,7 +85,7 @@ def handle_push(data, session=None):
         raise PushRejected("at least one operation couldn't be performed",
                            *e.args)
     # insert a new version
-    version = Version(created=datetime.datetime.now())
+    version = Version(created=datetime.datetime.now(), node_id=message.node_id)
     session.add(version)
     # insert the operations, discarding the 'order' column
     for op in sorted(message.operations, key=attr("order")):

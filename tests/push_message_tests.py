@@ -46,7 +46,7 @@ def test_create_message():
     changestuff()
     session = Session()
     message = PushMessage()
-    message.node = session.query(models.Node).first()
+    message.set_node(session.query(models.Node).first())
     message.add_unversioned_operations()
     assert message.to_json() == PushMessage(message.to_json()).to_json()
 
@@ -57,14 +57,15 @@ def test_encode_message():
     changestuff()
     session = Session()
     message = PushMessage()
-    message.node = session.query(models.Node).first()
+    message.set_node(session.query(models.Node).first())
     message.add_unversioned_operations()
     assert message.to_json() == json.loads(json.dumps(message.to_json()))
 
 
-@with_setup(setup, teardown)
-def test_message_query():
+def test_sign_message():
     session = Session()
     message = PushMessage()
-    message.node = session.query(models.Node).first()
-    assert repr(message.query(models.Node).all()) == repr([message.node])
+    message.set_node(session.query(models.Node).first())
+    assert message.islegit(session)
+    message.key += "broken"
+    assert not message.islegit(session)
