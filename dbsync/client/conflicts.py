@@ -76,7 +76,7 @@ def related_local_ids(operation, content_types, session):
              for model, fks in mapped_fks
              for obj in query_model(session, model, only_pk=True).\
                  filter(or_(*(getattr(model, fk) == operation.row_id
-                              for fk in fks))))
+                              for fk in fks))).all())
         if ct is not None)
 
 

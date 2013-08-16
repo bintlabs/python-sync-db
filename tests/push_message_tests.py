@@ -68,8 +68,8 @@ def test_sign_message():
     changestuff()
     session = Session()
     message = PushMessage()
-    message.add_unversioned_operations()
     message.set_node(session.query(models.Node).first())
+    message.add_unversioned_operations()
     assert message.islegit(session)
     message.key += "broken"
     assert not message.islegit(session)

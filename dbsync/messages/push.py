@@ -49,6 +49,9 @@ class PushMessage(BaseMessage):
     #: Node primary key
     node_id = None
 
+    #: Secret used internally to mitigate obnoxiousness.
+    _secret = None
+
     #: Key to this message
     key = None
 
@@ -108,19 +111,22 @@ class PushMessage(BaseMessage):
 
     def _portion(self):
         """Returns part of this message as a string."""
-        portion = self.created.isoformat()[:19]
-        for k in sorted(self.payload):
-            things = self.payload[k]
-            if len(portion) > 128:
-                return portion
-            portion += repr(things)
+        portion = self.created.isoformat()[:19] + \
+            "".join("&{0}#{1}#{2}".\
+                        format(op.row_id, op.content_type_id, op.command)
+                    for op in self.operations)
         return portion
+
+    def _sign(self):
+        if self._secret is not None:
+            self.key = hashlib.sha512(self._secret + self._portion()).hexdigest()
 
     def set_node(self, node):
         """Sets the node and key for this message."""
         if node is None: return
         self.node_id = node.node_id
-        self.key = hashlib.sha512(node.secret + self._portion()).hexdigest()
+        self._secret = node.secret
+        self._sign()
 
     def islegit(self, session):
         """Checks whether the key for this message is proper."""
@@ -162,4 +168,7 @@ class PushMessage(BaseMessage):
             self._add_operation(op, session)
         if closeit:
             session.close()
+        if self.key is not None:
+            # overwrite since it's probably an incorrect key
+            self._sign()
         return self
