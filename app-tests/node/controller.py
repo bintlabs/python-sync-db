@@ -116,3 +116,8 @@ def read_versions():
 def read_operations():
     session = Session()
     for op in session.query(models.Operation): print op
+
+
+def read_nodes():
+    session = Session()
+    for node in session.query(models.Node): print node

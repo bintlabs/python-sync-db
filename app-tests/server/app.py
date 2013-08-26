@@ -37,8 +37,9 @@ def root():
 
 @app.route("/register", methods=["POST"])
 def register():
-    # TODO handle register request
-    return ""
+    return (json.dumps(server.handle_register()),
+            200,
+            {"Content-Type": "application/json"})
 
 
 @app.route("/pull", methods=["GET"])
@@ -75,9 +76,11 @@ def query():
 def synch():
     session = models.Session()
     return u"<strong>Content Types:</strong><pre>{0}</pre><hr />"\
-        u"<strong>Versions:</strong><pre>{1}</pre><hr />"\
-        u"<strong>Operations:</strong><pre>{2}</pre><hr />".format(
+        u"<strong>Nodes:</strong><pre>{1}</pre><hr />"\
+        u"<strong>Versions:</strong><pre>{2}</pre><hr />"\
+        u"<strong>Operations:</strong><pre>{3}</pre><hr />".format(
         u"\n".join(enc(repr(x)) for x in session.query(synchmodels.ContentType)),
+        u"\n".join(enc(repr(x)) for x in session.query(synchmodels.Node)),
         u"\n".join(enc(repr(x)) for x in session.query(synchmodels.Version)),
         u"\n".join(enc(repr(x)) for x in session.query(synchmodels.Operation)))
 

@@ -9,6 +9,7 @@ layer on the server.
 from dbsync import core
 from dbsync.models import Node
 from dbsync.messages.register import RegisterMessage
+from dbsync.client.net import post_request
 
 
 class RegisterRejected(Exception): pass
@@ -16,7 +17,7 @@ class RegisterRejected(Exception): pass
 
 @core.with_listening(False)
 @core.with_transaction
-def register(registry_url, extra_data=None):
+def register(registry_url, extra_data=None, session=None):
     """Request a node registry from the server.
 
     If there is already a node registered in the local database, it
@@ -28,7 +29,7 @@ def register(registry_url, extra_data=None):
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
 
-    code, reason, response = post_request(registry_url, extra_data)
+    code, reason, response = post_request(registry_url, extra_data or {})
 
     if (code // 100 != 2) or response is None:
         raise RegisterRejected(code, reason, response)

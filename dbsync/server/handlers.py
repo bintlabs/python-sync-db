@@ -36,15 +36,15 @@ def handle_register(user_id=None, session=None):
     """Handle a registry request, creating a new node, wrapping it in
     a message and returning it to the client node.
 
-    *user_id* can be a key to a user record, which will be set in the
-    node record itself."""
+    *user_id* can be a numeric key to a user record, which will be set
+    in the node record itself."""
     newnode = Node()
     newnode.registered = datetime.datetime.now()
     newnode.registry_user_id = user_id
     newnode.secret = generate_secret(128)
     session.add(newnode)
     session.flush()
-    message = RegistryMessage()
+    message = RegisterMessage()
     message.node = newnode
     return message.to_json()
 
