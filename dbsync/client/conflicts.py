@@ -66,9 +66,9 @@ def related_local_ids(operation, content_types, session):
                       content_types)
 
     mapped_fks = ifilter(lambda (m, fks): m is not None and fks,
-                         ((get_model(t),
+                         [(get_model(t),
                            get_fks(t, class_mapper(parent_model).mapped_table))
-                          for t in related_tables))
+                          for t in related_tables])
     return set(
         (pk, ct.content_type_id)
         for pk, ct in \
@@ -104,17 +104,16 @@ def related_remote_ids(operation, content_types, container):
                       content_types)
 
     mapped_fks = ifilter(lambda (m, fks): m is not None and fks,
-                         ((get_model(t),
+                         [(get_model(t),
                            get_fks(t, class_mapper(parent_model).mapped_table))
-                          for t in related_tables))
-
+                          for t in related_tables])
     return set(
         (pk, ct.content_type_id)
         for pk, ct in \
             ((getattr(obj, get_pk(obj)), ct_for_model(model))
              for model, fks in mapped_fks
              for obj in container.query(model).\
-                 filter(lambda obj: any(getattr(model, fk) == operation.row_id
+                 filter(lambda obj: any(getattr(obj, fk) == operation.row_id
                                         for fk in fks)))
         if ct is not None)
 

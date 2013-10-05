@@ -151,7 +151,7 @@ class Operation(Base):
                 raise OperationError(
                     "no object backing the operation in container", operation)
             pull_obj = pull_objs[0]
-            for k, v in properties_dict(pull_obj):
+            for k, v in properties_dict(pull_obj).iteritems():
                 setattr(obj, k, v)
 
         elif operation.command == 'd':

@@ -36,7 +36,7 @@ def push(push_url, extra_data=None, session=None):
     message.latest_version_id = core.get_latest_version_id(session)
     compress()
     message.add_unversioned_operations(session)
-    message.set_node(session.query(Node).order_by(Node.node.id.desc()).first())
+    message.set_node(session.query(Node).order_by(Node.node_id.desc()).first())
     data = message.to_json()
     data.update({'extra_data': extra_data or {}})
 

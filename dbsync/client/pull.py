@@ -2,17 +2,68 @@
 Pull, merge and related operations.
 """
 
+from sqlalchemy import func
+
 from dbsync.lang import *
+from dbsync.utils import class_mapper, get_pk, query_model
 from dbsync import core
 from dbsync.models import ContentType, Operation
 from dbsync.messages.pull import PullMessage
 from dbsync.client.compression import compress, compressed_operations
 from dbsync.client.conflicts import (
+    get_related_tables,
+    get_fks,
     find_direct_conflicts,
     find_dependency_conflicts,
     find_reversed_dependency_conflicts,
     find_insert_conflicts)
 from dbsync.client.net import get_request
+
+
+# Utilities specific to the merge
+
+def max_local(ct, session):
+    """Returns the maximum value for the primary key of the given
+    content type in the local database."""
+    model = core.synched_models.get(ct.model_name)
+    if model is None:
+        raise ValueError("can't find model for content type {0}".format(ct))
+    return session.query(func.max(getattr(model, get_pk(model)))).scalar()
+
+def max_remote(ct, container):
+    """Returns the maximum value for the primary key of the given
+    content type in the container."""
+    return max(getattr(obj, get_pk(obj))
+               for obj in container.query(ct.model_name))
+
+def update_local_id(old_id, new_id, ct, content_types, session):
+    """Updates the tuple matching *old_id* with *new_id*, and updates
+    all dependent tuples in other tables as well."""
+    # Updating either the tuple or the dependent tuples first would
+    # cause integrity violations if the transaction is flushed in
+    # between. The order doesn't matter.
+    model = core.synched_models.get(ct.model_name)
+    if model is None:
+        raise ValueError("can't find model for content type {0}".format(ct))
+    obj = query_model(session, model, only_pk=True).\
+        filter_by(**{get_pk(model): old_id}).first()
+    setattr(obj, get_pk(model), new_id)
+    # Then the dependent ones
+    def get_model(table):
+        return core.synched_models.get(
+            maybe(lookup(attr("table_name") == table.name, content_types),
+                  attr("model_name")),
+            None)
+    related_tables = get_related_tables(model)
+    mapped_fks = ifilter(lambda (m, fks): m is not None and fks,
+                         [(get_model(t),
+                           get_fks(t, class_mapper(model).mapped_table))
+                          for t in related_tables])
+    for model, fks in mapped_fks:
+        for fk in fks:
+            for obj in query_model(session, model).filter_by(**{fk: old_id}):
+                setattr(obj, fk, new_id)
+    session.flush() # raise integrity errors now
 
 
 @core.with_listening(False)
@@ -46,20 +97,65 @@ def merge(pull_message, session=None):
     # merge transaction
     # first phase: perform pull operations, when allowed and while
     # resolving conflicts
+    extract = lambda op, conflicts: [local for remote, local in conflicts
+                                     if remote is op]
     for pull_op in pull_ops:
+        # flag to control whether the remote operation is free of obstacles
         can_perform = True
-        if pull_op in imap(fst, direct_conflicts):
-            # TODO handle it
-            pass
-        if pull_op in imap(fst, dependency_conflicts):
-            # TODO handle it
-            pass
-        if pull_op in imap(fst, reversed_dependency_conflicts):
-            # TODO handle it
-            pass
-        if pull_op in imap(fst, insert_conflicts):
-            # TODO handle it
-            pass
+        # the content type of the operation
+        ct = lookup(attr('content_type_id') == pull_op.content_type_id,
+                    content_types)
+
+        direct = extract(pull_op, direct_conflicts)
+        if direct:
+            if pull_op.command == 'd':
+                can_perform = False
+            for local in direct:
+                pair = (pull_op.command, local.command)
+                if pair == ('u', 'u'):
+                    can_perform = False # favor local changes over remote ones
+                elif pair == ('u', 'd'):
+                    pull_op.command = 'i' # negate the local delete
+                    session.delete(local)
+                elif pair == ('d', 'u'):
+                    local.command = 'i' # negate the remote delete 
+                else: # ('d', 'd')
+                    pass # nothing to do
+
+        dependency = extract(pull_op, dependency_conflicts)
+        if dependency:
+            can_perform = False
+            order = min(op.order for op in unversioned_ops)
+            # first move all operations further in order, to make way
+            # for the new one
+            for op in unversioned_ops:
+                op.order = op.order + 1
+            session.flush()
+            # then create operation to reflect the reinsertion and
+            # maintain a correct operation history
+            session.add(Operation(row_id=pull_op.row_id,
+                                  content_type_id=pull_op.content_type_id,
+                                  command='i',
+                                  order=order))
+
+        reversed_dependency = extract(pull_op, reversed_dependency_conflicts)
+        for local in reversed_dependency:
+            # reinsert record
+            local.command = 'i'
+            local.perform(content_types,
+                          core.synched_models,
+                          pull_message,
+                          session)
+            # delete trace of deletion
+            session.delete(local)
+
+        insert = extract(pull_op, insert_conflicts)
+        for local in insert:
+            session.flush()
+            next_id = max(max_remote(ct, pull_message),
+                          max_local(ct, session)) + 1
+            update_local_id(local.row_id, next_id, ct, content_types, session)
+            local.row_id = next_id
 
         if can_perform:
             pull_op.perform(content_types,
@@ -80,9 +176,6 @@ def pull(pull_url, extra_data=None):
 
     Additional data can be passed to the request by giving
     *extra_data*, a dictionary of values.
-
-    The pull operation handling should be configured with specialized
-    listeners given by the programmer.
 
     If not interrupted, the pull will perform a local merge. If the
     response from the server isn't appropriate, it will raise a

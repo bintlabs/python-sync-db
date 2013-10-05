@@ -56,7 +56,7 @@ def push():
                 200,
                 {"Content-Type": "application/json"})
     except server.handlers.PushRejected as e:
-        return (json.dums({'error': [repr(arg) for arg in e.args]}),
+        return (json.dumps({'error': [repr(arg) for arg in e.args]}),
                 400,
                 {"Content-Type": "application/json"})
 

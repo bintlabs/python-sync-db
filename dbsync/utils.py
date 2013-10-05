@@ -55,7 +55,7 @@ def get_pk(sa_variant):
 
 
 def parent_objects(sa_object, models, session):
-    """Returns all the parent objects the given *sa_object* point to
+    """Returns all the parent objects the given *sa_object* points to
     (through foreign keys in *sa_object*).
 
     *models* is a list of mapped classes.
