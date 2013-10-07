@@ -1,7 +1,7 @@
 import sys, os
 
 cwd = u"".join(reversed(os.getcwd()))
-test_dir = "tset-ppa"
+test_dir = "stset-ppa"
 try:
     base_dir = "".join(reversed(cwd[cwd.index(test_dir) + len(test_dir):]))
 except ValueError:

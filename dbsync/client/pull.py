@@ -99,6 +99,13 @@ def merge(pull_message, session=None):
     # resolving conflicts
     extract = lambda op, conflicts: [local for remote, local in conflicts
                                      if remote is op]
+    def purgelocal(local):
+        exclude = lambda _, l: l is not local
+        mfilter(exclude, direct_conflicts)
+        mfilter(exclude, dependency_conflicts)
+        mfilter(exclude, reversed_dependency_conflicts)
+        mfilter(exclude, insert_conflicts)
+
     for pull_op in pull_ops:
         # flag to control whether the remote operation is free of obstacles
         can_perform = True
@@ -117,6 +124,7 @@ def merge(pull_message, session=None):
                 elif pair == ('u', 'd'):
                     pull_op.command = 'i' # negate the local delete
                     session.delete(local)
+                    purgelocal(local)
                 elif pair == ('d', 'u'):
                     local.command = 'i' # negate the remote delete 
                 else: # ('d', 'd')
@@ -148,6 +156,7 @@ def merge(pull_message, session=None):
                           session)
             # delete trace of deletion
             session.delete(local)
+            purgelocal(local)
 
         insert = extract(pull_op, insert_conflicts)
         for local in insert:
