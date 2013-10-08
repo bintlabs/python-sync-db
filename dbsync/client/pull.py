@@ -79,7 +79,8 @@ def merge(pull_message, session=None):
     # preamble: detect conflicts between pulled operations and unversioned ones
     compress()
     unversioned_ops = session.query(Operation).\
-        filter(Operation.version_id == None).order_by(Operation.order.asc())
+        filter(Operation.version_id == None).\
+        order_by(Operation.order.asc()).all()
     pull_ops = compressed_operations(pull_message.operations)
 
     direct_conflicts = find_direct_conflicts(pull_ops, unversioned_ops)
@@ -100,11 +101,12 @@ def merge(pull_message, session=None):
     extract = lambda op, conflicts: [local for remote, local in conflicts
                                      if remote is op]
     def purgelocal(local):
-        exclude = lambda _, l: l is not local
+        exclude = lambda _, lop: lop is not local
         mfilter(exclude, direct_conflicts)
         mfilter(exclude, dependency_conflicts)
         mfilter(exclude, reversed_dependency_conflicts)
         mfilter(exclude, insert_conflicts)
+        unversioned_ops.remove(local)
 
     for pull_op in pull_ops:
         # flag to control whether the remote operation is free of obstacles
