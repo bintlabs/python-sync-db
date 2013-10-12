@@ -50,8 +50,8 @@ The synchronization process starts with the `push` procedure. In it,
 the client application builds a message containing only the required
 database objects, deciding which to include according to the
 operations log, and sends it to the server to execute. If the server
-allows the `push`, both the client and the server databases should be
-equivalent and the process may halt.
+allows the `push`, both the client and the server databases become
+equivalent and the process is complete.
 
 The `push` won't be allowed by the server if it's database has
 advanced further since the last synchronization. If the `push` is
@@ -75,6 +75,6 @@ TODO explain `register`.
 
 TODO explain `repair`.
 
-### Examples ###
+### Example ###
 
 TODO an example.
