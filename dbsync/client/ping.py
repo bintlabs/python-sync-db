@@ -8,7 +8,7 @@ connection and server status from the client application.
 from dbsync.client.net import head_request, NetworkError
 
 
-def is_connected(ping_url):
+def isconnected(ping_url):
     """Whether the client application is connected to the Internet."""
     try:
         head_request(ping_url)
@@ -17,7 +17,7 @@ def is_connected(ping_url):
         return False
 
 
-def server_ready(ping_url):
+def isready(ping_url):
     """Whether the server is ready to receive synchronization
     requests."""
     try:

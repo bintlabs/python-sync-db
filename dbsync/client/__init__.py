@@ -10,5 +10,5 @@ from dbsync.client.tracking import track
 from dbsync.client.register import register, isregistered
 from dbsync.client.pull import pull
 from dbsync.client.push import push
-from dbsync.client.ping import is_connected, server_ready
+from dbsync.client.ping import isconnected, isready
 from dbsync.client.repair import repair
