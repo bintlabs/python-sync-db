@@ -28,11 +28,25 @@ def enc(string):
 
 @app.route("/")
 def root():
-    return 'Register: POST /register<br />'\
+    return 'Ping: any method <a href="/ping">/ping</a><br />'\
+        'Repair: GET <a href="/repair">/repair</a><br />'\
+        'Register: POST /register<br />'\
         'Pull: GET <a href="/pull">/pull</a><br />'\
         'Push: POST /push<br />'\
         'Query: GET <a href="/query">/query</a><br />'\
         'Synch query: GET <a href="/synch">/synch</a>'
+
+
+@app.route("/ping")
+def ping():
+    return ""
+
+
+@app.route("/repair", methods=["GET"])
+def repair():
+    return (json.dumps(server.handle_repair()),
+            200,
+            {"Content-Type": "application/json"})
 
 
 @app.route("/register", methods=["POST"])

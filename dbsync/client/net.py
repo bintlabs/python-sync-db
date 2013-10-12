@@ -68,3 +68,22 @@ def get_request(server_url, data=None):
         return result
     except socket.error as e:
         raise NetworkError(*e.args)
+
+
+def head_request(server_url):
+    """Sends a HEAD request to *server_url*.
+
+    Returns a pair of (code, reason)."""
+    if not server_url.startswith("http://") and \
+            not server_url.startswith("https://"):
+        server_url = "http://" + server_url
+    scheme, netloc, path, _, _, _ = urlparse.urlparse(server_url)
+    try:
+        conn = (httplib.HTTPSConnection if scheme == "https" \
+                    else httplib.HTTPConnection)(netloc)
+        conn.request("HEAD", path)
+        response = conn.getresponse()
+        conn.close()
+        return (response.status, response.reason)
+    except socket.error as e:
+        raise NetworkError(*e.args)

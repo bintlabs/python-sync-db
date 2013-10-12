@@ -98,9 +98,11 @@ def merge(pull_message, session=None):
     # merge transaction
     # first phase: perform pull operations, when allowed and while
     # resolving conflicts
-    extract = lambda op, conflicts: [local for remote, local in conflicts
-                                     if remote is op]
+    def extract(op, conflicts):
+        return [local for remote, local in conflicts if remote is op]
+
     def purgelocal(local):
+        session.delete(local)
         exclude = lambda _, lop: lop is not local
         mfilter(exclude, direct_conflicts)
         mfilter(exclude, dependency_conflicts)
@@ -125,7 +127,6 @@ def merge(pull_message, session=None):
                     can_perform = False # favor local changes over remote ones
                 elif pair == ('u', 'd'):
                     pull_op.command = 'i' # negate the local delete
-                    session.delete(local)
                     purgelocal(local)
                 elif pair == ('d', 'u'):
                     local.command = 'i' # negate the remote delete 
@@ -157,7 +158,6 @@ def merge(pull_message, session=None):
                           pull_message,
                           session)
             # delete trace of deletion
-            session.delete(local)
             purgelocal(local)
 
         insert = extract(pull_op, insert_conflicts)

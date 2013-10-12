@@ -25,9 +25,23 @@ from dbsync.models import (
     ContentType,
     OperationError,
     Operation)
+from dbsync.messages.base import BaseMessage
 from dbsync.messages.register import RegisterMessage
 from dbsync.messages.pull import PullMessage
 from dbsync.messages.push import PushMessage
+
+
+def handle_repair():
+    """Handle repair request. Return whole server database."""
+    session = core.Session()
+    latest_version_id = core.get_latest_version_id(session)
+    message = BaseMessage()
+    for model in core.synched_models.itervalues():
+        for obj in session.query(model):
+            message.add_object(obj)
+    response = message.to_json()
+    response['latest_version_id'] = latest_version_id
+    return response
 
 
 @core.with_listening(False)
