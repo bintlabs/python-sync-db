@@ -10,7 +10,10 @@ from dbsync.models import ContentType, Operation, Version
 
 
 _SessionClass = sessionmaker(autoflush=False)
-Session = lambda: _SessionClass(bind=get_engine())
+def Session():
+    s = _SessionClass(bind=get_engine())
+    s._model_changes = dict() # for flask-sqlalchemy
+    return s
 
 
 #: The engine used for database connections.
