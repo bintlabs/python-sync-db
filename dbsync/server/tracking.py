@@ -24,7 +24,7 @@ def make_listener(command):
         ct = session.query(ContentType).\
             filter(ContentType.table_name == tname).first()
         if ct is None:
-            logging.error("you must register a content type for {0}"\
+            logging.error("you must register a content type for {0} "\
                               "to keep track of operations".format(tname))
             return
         # one version for each operation
