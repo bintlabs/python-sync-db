@@ -2,7 +2,7 @@
 Internal model used to keep track of versions and operations.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship, backref, validates
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
@@ -29,7 +29,7 @@ class ContentType(Base):
 
     __tablename__ = "content_types"
 
-    content_type_id = Column(Integer, primary_key=True)
+    content_type_id = Column(BigInteger, primary_key=True)
     table_name = Column(String(500))
     model_name = Column(String(500))
 
@@ -95,7 +95,7 @@ class Operation(Base):
         ForeignKey(Version.__tablename__ + ".version_id"),
         nullable=True)
     content_type_id = Column(
-        Integer, ForeignKey(ContentType.__tablename__ + ".content_type_id"))
+        BigInteger, ForeignKey(ContentType.__tablename__ + ".content_type_id"))
     command = Column(String(1))
     command_options = ('i', 'u', 'd')
     order = Column(Integer, primary_key=True)
