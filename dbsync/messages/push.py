@@ -111,8 +111,7 @@ class PushMessage(BaseMessage):
 
     def _portion(self):
         """Returns part of this message as a string."""
-        portion = self.created.isoformat()[:19] + \
-            "".join("&{0}#{1}#{2}".\
+        portion = "".join("&{0}#{1}#{2}".\
                         format(op.row_id, op.content_type_id, op.command)
                     for op in self.operations)
         return portion
