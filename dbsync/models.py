@@ -30,8 +30,8 @@ class ContentType(Base):
     __tablename__ = "content_types"
 
     content_type_id = Column(Integer, primary_key=True)
-    table_name = Column(String)
-    model_name = Column(String)
+    table_name = Column(String(500))
+    model_name = Column(String(500))
 
     def __repr__(self):
         return u"<ContentType id: {0}, table_name: {1}, model_name: {2}>".\
