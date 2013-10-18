@@ -108,6 +108,8 @@ def handle_push(data, session=None):
     if latest_version_id != message.latest_version_id:
         raise PushRejected("version identifier isn't the latest one; "\
                                "given: %d" % message.latest_version_id)
+    if not message.operations:
+        raise PushRejected("message doesn't contain operations")
     if not message.islegit(session):
         raise PushRejected("message isn't properly signed")
     # perform the operations
