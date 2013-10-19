@@ -6,6 +6,7 @@ client can also request a registry key if it hasn't been given one
 yet.
 """
 
+from dbsync.client.compression import unsynched_objects
 from dbsync.client.tracking import track
 from dbsync.client.register import register, isregistered
 from dbsync.client.pull import pull

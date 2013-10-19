@@ -3,7 +3,10 @@ from nose.tools import *
 
 from dbsync.lang import *
 from dbsync import models, core, client
-from dbsync.client.compression import compress, compressed_operations
+from dbsync.client.compression import (
+    compress,
+    compressed_operations,
+    unsynched_objects)
 
 from tests.models import A, B, Base, Session
 
@@ -70,6 +73,13 @@ def test_compression():
     assert session.query(models.Operation).\
         filter(models.Operation.command == 'd').\
         count() == 0, "delete operations don't match"
+
+
+@with_setup(setup, teardown)
+def test_unsynched_objects_detection():
+    addstuff()
+    changestuff()
+    assert bool(unsynched_objects()), "unsynched objects weren't detected"
 
 
 @with_setup(setup, teardown)

@@ -4,7 +4,7 @@ Operation compression, both in-memory and in-database.
 
 from dbsync.lang import *
 from dbsync import core
-from dbsync.models import Operation
+from dbsync.models import Operation, ContentType
 
 
 def _assert_operation_sequence(seq):
@@ -65,6 +65,7 @@ def compress():
                 # leave the delete statement
                 map(session.delete, seq[1:])
     session.commit()
+    session.close()
 
 
 def compressed_operations(operations):
@@ -86,3 +87,34 @@ def compressed_operations(operations):
             compressed.append(seq[0])
     compressed.sort(key=attr("order"))
     return compressed
+
+
+def unsynched_objects():
+    """Returns a list of triads (class, id, operation) that represents
+    the unsynchronized objects in the tracked database.
+
+    The first element of each triad is the class for the
+    unsynchronized object.
+
+    The second element is the primary key *value* of the object.
+
+    The third element is a character in ``('i', 'u', 'd')`` that
+    represents the operation that altered the objects state (insert,
+    update or delete). If it's a delete, the object won't be present
+    in the tracked database."""
+    compress()
+    session = core.Session()
+    cts = session.query(ContentType).all()
+    ops = session.query(Operation).filter(Operation.version_id == None).all()
+    def getclass(ct_id):
+        return core.synched_models.get(
+            maybe(lookup(attr('content_type_id') == ct_id, cts),
+                  attr('model_name'),
+                  None),
+            None)
+    triads = [
+        (c, op.row_id, op.command)
+        for c, op in ((getclass(op.content_type_id), op) for op in ops)
+        if c is not None]
+    session.close()
+    return triads
