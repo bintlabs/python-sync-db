@@ -78,6 +78,7 @@ def create_person(**kwargs):
     person = Person()
     for k, v in kwargs.iteritems():
         setattr(person, k, v)
+    session.add(person)
     session.commit()
 
 

@@ -2,7 +2,7 @@
 Generic functions for repeating patterns.
 """
 
-from itertools import imap, ifilter, starmap
+from itertools import imap, ifilter, starmap, dropwhile, takewhile
 from functools import partial, wraps
 
 
