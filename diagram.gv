@@ -3,8 +3,8 @@ strict digraph diagram {
    n1 [label="Server:\nawaits push"];
    n2 [label="Server:\nawaits pull"];
    n3 [label="Client:\nup-to-date"];
-   n4 [label="Client:\nsyncrhonized"];
-   n5 [label="Server:\nsyncrhonized"];
+   n4 [label="Client:\nsynchronized"];
+   n5 [label="Server:\nsynchronized"];
    edge [label="push"];
    n0 -> n1;
    edge [label="push rejected"];
