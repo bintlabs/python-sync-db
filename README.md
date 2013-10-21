@@ -9,8 +9,7 @@ internet connection is lost, by using a local database and providing a
 few synchronization procedures: `pull`, `push`, `register` and
 `repair`.
 
-Until otherwise stated, assume it hasn't yet been tested in a real
-application.
+This library is currently undergoing testing in a real application.
 
 ## Restrictions ##
 
@@ -62,18 +61,44 @@ merge operation executes internally and includes the conflict
 resolution phase, which ideally will resolve the potential operation
 collisions.
 
-TODO diagram.
-
-TODO svn analogy.
+![Synchronization sequence](https://raw.github.com/bintlabs/python-sync-db/master/diagram.png)
 
 If the `pull` procedure completes successfully, the client application
-may attempt another `push`.
+may attempt another `push`, as shown by the cycle in the diagram
+above.
 
 ### Additional procedures ###
 
-TODO explain `register`.
+#### Registering nodes ####
 
-TODO explain `repair`.
+The `register` procedure exists to provide a mechanism for nodes to be
+identified by the server. A node may request it's registration through
+the `register` procedure, and if accepted, it will receive a set of
+credentials.
+
+These credentials are used (as of this revision) to sign the `push`
+message sent by the node, since it's the only procedure that can
+potentially destroy data on the server.
+
+Other procedures should also be protected by the programmer (e.g. to
+prevent theft), but that is her/his responsibility. Synchronization
+procedures usually allow the inclusion of user-set data, which can be
+checked on the server for authenticity. Also, the HTTPS protocol may
+be used by prepending the 'https://' prefix to the URL for each
+procedure.
+
+#### Repairing the client's database ####
+
+The `repair` procedure exists to allow the client application's
+database to recover from otherwise stale states. Such a state should
+in theory be impossible to reach, but external database intervention,
+or poor conflict resolution by this library (which will be monitored
+in private testing), might result in achieving it.
+
+The `repair` just fetches the entire server database, serialized as
+JSON, and then replaces the current one with it. Since it's meant to
+be used to fix infrequent errors, and might take a long time to
+complete, it should not be used recurrently.
 
 ### Example ###
 

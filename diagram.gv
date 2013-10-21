@@ -1,0 +1,20 @@
+strict digraph diagram {
+   n0 [label="Client:\nunsynchronized"];
+   n1 [label="Server:\nawaits push"];
+   n2 [label="Server:\nawaits pull"];
+   n3 [label="Client:\nup-to-date"];
+   n4 [label="Client:\nsyncrhonized"];
+   n5 [label="Server:\nsyncrhonized"];
+   edge [label="push"];
+   n0 -> n1;
+   edge [label="push rejected"];
+   n1 -> n0;
+   edge [label="pull"];
+   n0 -> n2;
+   edge [label="pull payload"];
+   n2 -> n3;
+   edge [label="push"];
+   n3 -> n1;
+   edge [label="push accepted"];
+   n1 -> n5 -> n4;
+}
