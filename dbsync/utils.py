@@ -29,6 +29,14 @@ def properties_dict(sa_object):
                 if isinstance(prop, ColumnProperty))
 
 
+def column_properties(sa_variant):
+    """Returns a list of column-properties."""
+    mapper = class_mapper(sa_variant) if inspect.isclass(sa_variant) \
+        else object_mapper(sa_variant)
+    return [prop.key for prop in mapper.iterate_properties
+            if isinstance(prop, ColumnProperty)]
+
+
 def types_dict(sa_class):
     """Returns a dictionary of column-properties mapped to their
     SQLAlchemy types for the given mapped class."""

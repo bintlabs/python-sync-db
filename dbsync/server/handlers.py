@@ -1,5 +1,5 @@
 """
-Registry, pull and push request handlers.
+Registry, pull, push and other request handlers.
 
 The pull cycle consists in receiving a version identifier and sending
 back a PullMessage filled with versions above the one received.
@@ -17,7 +17,7 @@ tasked to send the HTTP response).
 import datetime
 
 from dbsync.lang import *
-from dbsync.utils import generate_secret, properties_dict
+from dbsync.utils import generate_secret, properties_dict, column_properties
 from dbsync import core
 from dbsync.models import (
     Version,
@@ -31,6 +31,26 @@ from dbsync.messages.pull import PullMessage
 from dbsync.messages.push import PushMessage
 
 
+def handle_query(data):
+    """Responds to a query request."""
+    model = core.synched_models.get(data.get('model', None), None)
+    if model is None: return None
+    mname = model.__name__
+    filters = dict((k, v) for k, v in ((k[len(mname) + 1:], v)
+                                       for k, v in data.iteritems()
+                                       if k.startswith(mname + '_'))
+                   if k and k in column_properties(model))
+    session = core.Session()
+    message = BaseMessage()
+    q = session.query(model)
+    if filters:
+        q = q.filter_by(**filters)
+    for obj in q:
+        message.add_object(obj)
+    session.close()
+    return message.to_json()
+
+
 def handle_repair():
     """Handle repair request. Return whole server database."""
     session = core.Session()
@@ -41,6 +61,7 @@ def handle_repair():
             message.add_object(obj)
     response = message.to_json()
     response['latest_version_id'] = latest_version_id
+    session.close()
     return response
 
 

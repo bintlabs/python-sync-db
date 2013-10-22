@@ -34,6 +34,7 @@ def root():
         'Pull: GET <a href="/pull">/pull</a><br />'\
         'Push: POST /push<br />'\
         'Query: GET <a href="/query">/query</a><br />'\
+        'Inspect: GET <a href="/inspect">/inspect</a><br />'\
         'Synch query: GET <a href="/synch">/synch</a>'
 
 
@@ -77,6 +78,13 @@ def push():
 
 @app.route("/query", methods=["GET"])
 def query():
+    return (json.dumps(server.handle_query(request.args)),
+            200,
+            {"Content-Type": "application/json"})
+
+
+@app.route("/inspect", methods=["GET"])
+def inspect():
     session = models.Session()
     return u"<strong>Cities:</strong><pre>{0}</pre><hr />"\
         u"<strong>Houses:</strong><pre>{1}</pre><hr />"\
