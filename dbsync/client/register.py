@@ -43,4 +43,6 @@ def isregistered():
     """Checks whether this client application has at least one node
     registry."""
     session = core.Session()
-    return session.query(Node).first() is not None
+    result = session.query(Node).first() is not None
+    session.close()
+    return result

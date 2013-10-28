@@ -38,6 +38,7 @@ def make_listener(command):
         session.add(op)
         op.version = version
         session.commit()
+        session.close()
     return listener
 
 

@@ -25,6 +25,7 @@ def flush_operations(_):
         session.add(op)
         session.flush()
     session.commit()
+    session.close()
 
 
 def empty_queue(*_):
@@ -53,6 +54,7 @@ def make_listener(command):
             content_type_id=ct.content_type_id,
             command=command)
         _operations_queue.append(op)
+        session.close()
     return listener
 
 

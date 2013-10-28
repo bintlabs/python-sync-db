@@ -109,6 +109,7 @@ def generate_content_types():
                                     model_name=mname,
                                     content_type_id=content_type_id))
     session.commit()
+    session.close()
 
 
 def is_synched(obj):
@@ -120,13 +121,16 @@ def is_synched(obj):
     ct = session.query(ContentType).\
         filter(ContentType.model_name == obj.__class__.__name__).first()
     if ct is None:
+        session.close()
         raise TypeError("the given object of class {0} isn't being tracked".\
                             format(obj.__class__.__name__))
     last_op = session.query(Operation).\
         filter(Operation.content_type_id == ct.content_type_id,
                Operation.row_id == getattr(obj, get_pk(obj))).\
                order_by(Operation.order.desc()).first()
-    return last_op is None or last_op.version_id is not None
+    result = last_op is None or last_op.version_id is not None
+    session.close()
+    return result
 
 
 def get_latest_version_id(session=None):
