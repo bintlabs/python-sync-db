@@ -102,4 +102,194 @@ complete, it should not be used recurrently.
 
 ### Example ###
 
-TODO an example.
+First, give the library a SQLAlchemy engine to access the database. On
+the client application, the current tested database is SQLite.
+
+```python
+from sqlalchemy import create_engine
+import dbsync
+
+engine = create_engine("sqlite:///storage.db") # sample database URL
+
+dbsync.set_engine(engine)
+```
+
+If you don't do this, the library will complain as soon as you attempt
+an operation.
+
+Next, start tracking your operations to fill the opertions log. Use
+the `dbsync.client.track` or the `dbsync.server.track` depending on
+your application. Don't import both `dbsync.client` and
+`dbsync.server`.
+
+```python
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
+
+from dbsync import client
+
+
+Base = declarative_base()
+Base.__table_args__ = {'sqlite_autoincrement': True,} # important
+
+
+@client.track
+class City(Base):
+
+    __tablename__ = "city"
+
+    id = Column(Integer, primary_key=True) # doesn't have to be called 'id'
+    name = Column(String(100))
+
+
+@client.track
+class Person(Base):
+
+    __tablename__ = "person"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100))
+    city_id = Column(Integer, ForeignKey("city.id"))
+
+    city = relationship(City, backref="persons")
+```
+
+After you've marked all the models you want tracked, you need to
+generate the metadata for them, explicitly. You can do this once, or
+every time the application is started, since it's (should be)
+idempotent.
+
+```python
+import dbsync
+
+dbsync.create_all()
+dbsync.generate_content_types()
+```
+
+Next you should register your client application in the server. To do
+this, use the `register` procedure:
+
+```python
+from dbsync import client
+
+client.register(REGISTER_URL)
+```
+
+Where `REGISTER_URL` is the URL pointing to the register handler on
+the server. More on this below.
+
+You can register the client application just once, or check whenever
+you wish with the `isregistered` predicate.
+
+```python
+from dbsync import client
+
+if not client.isregistered():
+   client.register(REGISTER_URL)
+```
+
+Now you're ready to try synchronization procedures. If the server is
+configured correctly (as shown further below), an acceptable
+synchronization cycle could be:
+
+```python
+from dbsync import client
+
+
+def synchronize(push_url, pull_url, tries):
+    for _ in range(tries):
+        try:
+            return client.push(push_url)
+        except:
+            try:
+                client.pull(pull_url)
+            except:
+                # handle exception
+                pass
+    raise Exception("push rejected %d times" % tries)
+```
+
+You can also catch the different exceptions (second `except` above)
+and react accordingly, since they can indicate lack of internet
+connection, integrity conflicts, or dbsync configuration problems.
+
+#### Server side ####
+
+First of all, instead of importing `dbsync.client`, import
+`dbsync.server`. So, to track a model:
+
+```python
+from dbsync import server
+
+@server.track
+class Person(Base):
+    # ...
+```
+
+Then, listen to five distinct URLs:
+
+- One for the `repair` procedure, listening GETs.
+- One for the `register` procedure, listening POSTs.
+- One for the `pull` procedure, listening GETs.
+- One for the `push` procedure, listening POSTs.
+- One (optional) for the `query` procedure (for remote queries),
+  listening GETs.
+
+These handlers should return JSON and use the dbsync handlers. For
+example, using [Flask](http://flask.pocoo.org/):
+
+```python
+import json
+from flask import Flask, request
+from dbsync import server
+
+
+app = Flask(__name__)
+
+
+@app.route("/repair", methods=["GET"])
+def repair():
+    return (json.dumps(server.handle_repair()),
+            200,
+            {"Content-Type": "application/json"})
+
+
+@app.route("/register", methods=["POST"])
+def register():
+    return (json.dumps(server.handle_register()),
+            200,
+            {"Content-Type": "application/json"})
+
+
+@app.route("/pull", methods=["GET"])
+def pull():
+    return (json.dumps(server.handle_pull(request.args)),
+            200,
+            {"Content-Type": "application/json"})
+
+
+@app.route("/push", methods=["POST"])
+def push():
+    try:
+        return (json.dumps(server.handle_push(request.json)),
+                200,
+                {"Content-Type": "application/json"})
+    except server.handlers.PushRejected as e:
+        return (json.dumps({'error': [repr(arg) for arg in e.args]}),
+                400,
+                {"Content-Type": "application/json"})
+
+
+@app.route("/query", methods=["GET"])
+def query():
+    return (json.dumps(server.handle_query(request.args)),
+            200,
+            {"Content-Type": "application/json"})
+```
+
+Messages to the server usually contain additional user-set data, to
+allow for extra checks and custom protection. You can access these
+through `request.json.extra_data` when JSON is expected.
+
+Also, the HTTPS protocol is supported.

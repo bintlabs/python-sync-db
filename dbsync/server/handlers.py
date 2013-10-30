@@ -17,7 +17,11 @@ tasked to send the HTTP response).
 import datetime
 
 from dbsync.lang import *
-from dbsync.utils import generate_secret, properties_dict, column_properties
+from dbsync.utils import (
+    generate_secret,
+    properties_dict,
+    column_properties,
+    query_model)
 from dbsync import core
 from dbsync.models import (
     Version,
@@ -42,7 +46,7 @@ def handle_query(data):
                    if k and k in column_properties(model))
     session = core.Session()
     message = BaseMessage()
-    q = session.query(model)
+    q = query_model(session, model)
     if filters:
         q = q.filter_by(**filters)
     for obj in q:
@@ -57,7 +61,7 @@ def handle_repair():
     latest_version_id = core.get_latest_version_id(session)
     message = BaseMessage()
     for model in core.synched_models.itervalues():
-        for obj in session.query(model):
+        for obj in query_model(session, model):
             message.add_object(obj)
     response = message.to_json()
     response['latest_version_id'] = latest_version_id
