@@ -221,7 +221,7 @@ def merge(pull_message, session=None):
 class BadResponseError(Exception): pass
 
 
-def pull(pull_url, extra_data=None):
+def pull(pull_url, extra_data=None, encode=None, decode=None, headers=None):
     """Attempts a pull from the server. Returns the response body.
 
     Additional data can be passed to the request by giving
@@ -229,7 +229,11 @@ def pull(pull_url, extra_data=None):
 
     If not interrupted, the pull will perform a local merge. If the
     response from the server isn't appropriate, it will raise a
-    dbysnc.client.pull.BadResponseError."""
+    dbysnc.client.pull.BadResponseError.
+
+    By default, the *encode* function is ``json.dumps``, the *decode*
+    function is ``json.loads``, and the *headers* are appropriate HTTP
+    headers for JSON."""
     assert isinstance(pull_url, basestring), "pull url must be a string"
     assert bool(pull_url), "pull url can't be empty"
     if extra_data is not None:
@@ -240,7 +244,7 @@ def pull(pull_url, extra_data=None):
     data = {'latest_version_id': core.get_latest_version_id()}
     data.update(extra)
 
-    code, reason, response = get_request(pull_url, data)
+    code, reason, response = get_request(pull_url, data, encode, decode, headers)
 
     if (code // 100 != 2) or response is None:
         raise BadResponseError(code, reason, response)

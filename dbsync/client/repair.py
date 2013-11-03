@@ -46,17 +46,22 @@ def repair_database(message, latest_version_id, session=None):
 class BadResponseError(Exception): pass
 
 
-def repair(repair_url, extra_data=None):
+def repair(repair_url, extra_data=None, encode=None, decode=None, headers=None):
     """Fetches the server database and replaces the local one with it.
 
-    *extra_data* can be used to add user credentials."""
+    *extra_data* can be used to add user credentials.
+
+    By default, the *encode* function is ``json.dumps``, the *decode*
+    function is ``json.loads``, and the *headers* are appropriate HTTP
+    headers for JSON."""
     assert isinstance(repair_url, basestring), "repair url must be a string"
     assert bool(repair_url), "repair url can't be empty"
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
     data = extra_data if extra_data is not None else {}
 
-    code, reason, response = get_request(repair_url, data)
+    code, reason, response = get_request(
+        repair_url, data, encode, decode, headers)
 
     if (code // 100 != 2) or response is None:
         raise BadResponseError(code, reason, response)

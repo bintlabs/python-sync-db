@@ -16,7 +16,8 @@ class PushRejected(Exception): pass
 
 
 @core.with_transaction
-def push(push_url, extra_data=None, session=None):
+def push(push_url, extra_data=None,
+         encode=None, decode=None, headers=None, session=None):
     """Attempts a push to the server. Returns the response body.
 
     Additional data can be passed to the request by giving
@@ -27,7 +28,11 @@ def push(push_url, extra_data=None, session=None):
     added version.
 
     If rejected, the push operation will raise a
-    dbsync.client.push.PushRejected exception."""
+    dbsync.client.push.PushRejected exception.
+
+    By default, the *encode* function is ``json.dumps``, the *decode*
+    function is ``json.loads``, and the *headers* are appropriate HTTP
+    headers for JSON."""
     assert isinstance(push_url, basestring), "push url must be a string"
     assert bool(push_url), "push url can't be empty"
     if extra_data is not None:
@@ -40,7 +45,8 @@ def push(push_url, extra_data=None, session=None):
     data = message.to_json()
     data.update({'extra_data': extra_data or {}})
 
-    code, reason, response = post_request(push_url, data)
+    code, reason, response = post_request(
+        push_url, data, encode, decode, headers)
 
     if (code // 100 != 2) or response is None:
         raise PushRejected(code, reason, response)

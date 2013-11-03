@@ -18,12 +18,13 @@ def query_server(query_url, *class_, **filters):
 
     If no class and no filters are given, the procedure returns a
     curried form."""
-    def query(cls, **args):
+    def query(cls, encode=None, decode=None, headers=None, **args):
         data = {'model': cls.__name__}
         data.update(dict(('{0}_{1}'.format(cls.__name__, key), value)
                          for key, value in args.iteritems()))
 
-        code, reason, response = get_request(query_url, data)
+        code, reason, response = get_request(
+            query_url, data, encode, decode, headers)
 
         if (code // 100 != 2) or response is None:
             raise BadResponseError(code, reason, response)
