@@ -13,12 +13,12 @@ from dbsync.client.net import get_request
 class BadResponseError(Exception): pass
 
 
-def query_server(query_url, *class_, **filters):
-    """Queries the server for a single object's dataset.
+def query_server(query_url, encode=None, decode=None, headers=None):
+    """Queries the server for a single model's dataset.
 
-    If no class and no filters are given, the procedure returns a
-    curried form."""
-    def query(cls, encode=None, decode=None, headers=None, **args):
+    This procedure returns a procedure that receives the class and
+    filters, and performs the HTTP request."""
+    def query(cls, **args):
         data = {'model': cls.__name__}
         data.update(dict(('{0}_{1}'.format(cls.__name__, key), value)
                          for key, value in args.iteritems()))
@@ -35,10 +35,4 @@ def query_server(query_url, *class_, **filters):
             raise BadResponseError(
                 "response object isn't a valid BaseMessage", response)
         return message.query(cls).all()
-    if not class_ and not filters:
-        return query
-    if len(class_) != 1:
-        raise TypeError(
-            "query_server takes exactly 1 class argument ({0} given)".\
-                format(len(class_)))
-    return query(class_[0], **filters)
+    return query
