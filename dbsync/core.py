@@ -2,6 +2,8 @@
 Common functionality for model synchronization and version tracking.
 """
 
+import zlib
+
 from sqlalchemy.orm import sessionmaker
 
 from dbsync.lang import *
@@ -102,7 +104,8 @@ def generate_content_types():
     session = Session()
     for mname, model in synched_models.iteritems():
         tname = model.__table__.name
-        content_type_id = hash('{0}/{1}'.format(mname, tname))
+        content_type_id = zlib.crc32('{0}/{1}'.format(mname, tname), 0) \
+            & 0xffffffff
         if session.query(ContentType).\
                 filter(ContentType.table_name == tname).count() == 0:
             session.add(ContentType(table_name=tname,
