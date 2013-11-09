@@ -6,7 +6,7 @@ import inspect
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, properties_dict
-from dbsync.core import synched_models
+from dbsync.core import synched_models, model_extensions
 from dbsync import models
 from dbsync.messages.codecs import decode_dict, encode_dict
 
@@ -136,7 +136,12 @@ class BaseMessage(object):
         class_ = obj.__class__
         classname = class_.__name__
         obj_set = self.payload.get(classname, set())
+        properties = properties_dict(obj)
+        extensions = model_extensions.get(classname, {})
+        for field, ext in extensions.iteritems():
+            _, loadfn, _ = ext
+            properties[field] = loadfn(obj)
         obj_set.add(ObjectType(
-                classname, getattr(obj, get_pk(class_)), **properties_dict(obj)))
+                classname, getattr(obj, get_pk(class_)), **properties))
         self.payload[classname] = obj_set
         return self

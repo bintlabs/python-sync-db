@@ -8,6 +8,7 @@ yet.
 
 from dbsync.client.compression import unsynched_objects
 from dbsync.client.tracking import track
+from dbsync.core import extend
 from dbsync.client.register import register, isregistered
 from dbsync.client.pull import pull
 from dbsync.client.push import push

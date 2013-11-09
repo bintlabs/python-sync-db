@@ -3,6 +3,7 @@ Common functionality for model synchronization and version tracking.
 """
 
 import zlib
+import inspect
 
 from sqlalchemy.orm import sessionmaker
 
@@ -11,7 +12,7 @@ from dbsync.utils import get_pk
 from dbsync.models import ContentType, Operation, Version
 
 
-_SessionClass = sessionmaker(autoflush=False)
+_SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
 def Session():
     s = _SessionClass(bind=get_engine())
     s._model_changes = dict() # for flask-sqlalchemy
@@ -41,6 +42,43 @@ def get_engine():
 
 #: Set of classes marked for synchronization and change tracking.
 synched_models = {}
+
+
+#: Extensions to tracked models.
+model_extensions = {}
+
+
+def extend(model, fieldname, fieldtype, loadfn, savefn):
+    """
+    Extends *model* with a field of name *fieldname* and type
+    *fieldtype*.
+
+    *fieldtype* should be an instance of a SQLAlchemy type class, or
+    the class itself.
+
+    *loadfn* is a function called to populate the extension. It should
+    accept an instance of the model and should return the value of the
+    field.
+
+    *savefn* is a function called to persist the field. It should
+    accept the instance of the model and the field's value. It's
+    return value is ignored.
+
+    Proposal: https://gist.github.com/kklingenberg/7336576
+    """
+    def check(cond, message): assert cond, message
+    check(inspect.isclass(model), "model must be a mapped class")
+    check(isinstance(fieldname, basestring) and bool(fieldname),
+          "field name must be a non-empty string")
+    check(not hasattr(model, fieldname),
+          "the model {0} already has the attribute {1}".\
+              format(model.__name__, fieldname))
+    check(inspect.isroutine(loadfn), "load function must be a callable")
+    check(inspect.isroutine(savefn), "save function must be a callable")
+    extensions = model_extensions.get(model.__name__, {})
+    type_ = fieldtype if not inspect.isclass(fieldtype) else fieldtype()
+    extensions[fieldname] = (type_, loadfn, savefn)
+    model_extensions[model.__name__] = extensions
 
 
 #: Toggled variable used to disable listening to operations momentarily.
@@ -83,16 +121,26 @@ def with_transaction(proc):
     @wraps(proc)
     def wrapped(*args, **kwargs):
         session = Session()
+        added = []
+        session.add = (lambda fn: lambda o:
+                           begin(added.append(o),
+                                 fn(o)))(session.add)
+        result = None
         try:
-            kwargs.update({"session": session})
+            kwargs.update({'session': session})
             result = proc(*args, **kwargs)
             session.commit()
             session.close()
-            return result
         except:
             session.rollback()
             session.close()
             raise
+        for obj in added:
+            extensions = model_extensions.get(obj.__class__.__name__, {})
+            for field, ext in extensions.iteritems():
+                _, _, savefn = ext
+                savefn(obj, getattr(obj, field))
+        return result
     return wrapped
 
 

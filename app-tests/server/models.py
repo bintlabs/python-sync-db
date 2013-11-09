@@ -28,6 +28,16 @@ class City(Base):
     def __repr__(self):
         return u"<City id: {0}; name: {1}>".format(self.id, self.name)
 
+name_pool = ["foo", "bar", "baz"]
+
+def load_extra(city):
+    return "-".join(name_pool) + "-" + city.name
+
+def save_extra(city, data):
+    print city.name, data
+
+server.extend(City, "extra", String, load_extra, save_extra)
+
 
 @server.track
 class House(Base):
