@@ -122,9 +122,10 @@ def with_transaction(proc):
     def wrapped(*args, **kwargs):
         session = Session()
         added = []
-        session.add = (lambda fn: lambda o:
-                           begin(added.append(o),
-                                 fn(o)))(session.add)
+        track_added = lambda fn: lambda o, **kwargs: begin(added.append(o),
+                                                           fn(o, **kwargs))
+        session.add = track_added(session.add)
+        session.merge = track_added(session.merge)
         result = None
         try:
             kwargs.update({'session': session})
@@ -139,7 +140,7 @@ def with_transaction(proc):
             extensions = model_extensions.get(obj.__class__.__name__, {})
             for field, ext in extensions.iteritems():
                 _, _, savefn = ext
-                savefn(obj, getattr(obj, field))
+                savefn(obj, getattr(obj, field, None))
         return result
     return wrapped
 

@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 from dbsync.lang import *
-from dbsync.utils import properties_dict, get_pk, query_model
+from dbsync.utils import get_pk, query_model
 
 
 #: Database tables prefix.
@@ -132,7 +132,7 @@ class Operation(Base):
 
         if operation.command == 'i':
             objs = container.query(model).\
-                filter(attr("__pk__") == operation.row_id).all()
+                filter(attr('__pk__') == operation.row_id).all()
             if not objs:
                 raise OperationError(
                     "no object backing the operation in container", operation)
@@ -146,13 +146,11 @@ class Operation(Base):
                 raise OperationError(
                     "the referenced object doesn't exist in database", operation)
             pull_objs = container.query(model).\
-                filter(attr("__pk__") == operation.row_id).all()
+                filter(attr('__pk__') == operation.row_id).all()
             if not pull_objs:
                 raise OperationError(
                     "no object backing the operation in container", operation)
-            pull_obj = pull_objs[0]
-            for k, v in properties_dict(pull_obj).iteritems():
-                setattr(obj, k, v)
+            session.merge(pull_objs[0])
 
         elif operation.command == 'd':
             obj = query_model(session, model, only_pk=True).\
