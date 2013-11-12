@@ -46,7 +46,7 @@ def related_local_ids(operation, content_types, session):
     to content type ids that correspond to objects that are dependent
     by foreign key on the object being operated upon. The lookups are
     performed in the local database."""
-    parent_ct = lookup(attr("content_type_id") == operation.content_type_id,
+    parent_ct = lookup(attr('content_type_id') == operation.content_type_id,
                        content_types)
     if parent_ct is None:
         return set()
@@ -57,12 +57,12 @@ def related_local_ids(operation, content_types, session):
 
     def get_model(table):
         return synched_models.get(
-            maybe(lookup(attr("table_name") == table.name, content_types),
-                  attr("model_name")),
+            maybe(lookup(attr('table_name') == table.name, content_types),
+                  attr('model_name')),
             None)
 
     def ct_for_model(model):
-        return lookup(attr("model_name") == model.__name__,
+        return lookup(attr('model_name') == model.__name__,
                       content_types)
 
     mapped_fks = ifilter(lambda (m, fks): m is not None and fks,
@@ -84,7 +84,7 @@ def related_remote_ids(operation, content_types, container):
     """Like *related_local_ids*, but the lookups are performed in
     *container*, that's an instance of
     *dbsync.messages.base.BaseMessage*."""
-    parent_ct = lookup(attr("content_type_id") == operation.content_type_id,
+    parent_ct = lookup(attr('content_type_id') == operation.content_type_id,
                        content_types)
     if parent_ct is None:
         return set()
@@ -95,12 +95,12 @@ def related_remote_ids(operation, content_types, container):
 
     def get_model(table):
         return synched_models.get(
-            maybe(lookup(attr("table_name") == table.name, content_types),
-                  attr("model_name")),
+            maybe(lookup(attr('table_name') == table.name, content_types),
+                  attr('model_name')),
             None)
 
     def ct_for_model(model):
-        return lookup(attr("model_name") == model.__name__,
+        return lookup(attr('model_name') == model.__name__,
                       content_types)
 
     mapped_fks = ifilter(lambda (m, fks): m is not None and fks,

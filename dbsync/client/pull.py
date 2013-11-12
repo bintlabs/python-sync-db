@@ -54,8 +54,8 @@ def update_local_id(old_id, new_id, ct, content_types, session):
     # Then the dependent ones
     def get_model(table):
         return core.synched_models.get(
-            maybe(lookup(attr("table_name") == table.name, content_types),
-                  attr("model_name")),
+            maybe(lookup(attr('table_name') == table.name, content_types),
+                  attr('model_name')),
             None)
     related_tables = get_related_tables(model)
     mapped_fks = ifilter(lambda (m, fks): m is not None and fks,

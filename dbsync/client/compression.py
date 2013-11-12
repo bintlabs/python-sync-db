@@ -22,7 +22,7 @@ def _assert_operation_sequence(seq):
         "(e.g. using AUTO INCREMENT). Operations from old to new: {2}".\
         format(seq[0].row_id,
                seq[0].content_type_id,
-               list(reversed(map(attr("command"), seq))))
+               list(reversed(map(attr('command'), seq))))
     # nothing but updates should happen between beginning and end of
     # the sequence
     assert all(op.command == 'u' for op in seq[1:-1]), message
@@ -51,14 +51,14 @@ def compress():
 
     for seq in ifilter(lambda seq: len(seq) > 1, seqs.itervalues()):
         if seq[-1].command == 'i':
-            if andmap(attr("command") == 'u', seq[:-1]):
+            if andmap(attr('command') == 'u', seq[:-1]):
                 # updates are superfluous
                 map(session.delete, seq[:-1])
             elif seq[0].command == 'd':
                 # it's as if the object never existed
                 map(session.delete, seq)
         elif seq[-1].command == 'u':
-            if andmap(attr("command") == 'u', seq[:-1]):
+            if andmap(attr('command') == 'u', seq[:-1]):
                 # leave a single update
                 map(session.delete, seq[1:])
             elif seq[0].command == 'd':
@@ -73,19 +73,19 @@ def compressed_operations(operations):
     ones. Returns the compressed set sorted by operation order. This
     procedure doesn't perform database operations."""
     seqs = group_by(lambda op: (op.row_id, op.content_type_id),
-                    sorted(operations, key=attr("order")))
+                    sorted(operations, key=attr('order')))
     compressed = []
     for seq in seqs.itervalues():
-        if seq[0].command == 'i' and andmap(attr("command") == 'u', seq[1:]):
+        if seq[0].command == 'i' and andmap(attr('command') == 'u', seq[1:]):
             compressed.append(seq[0])
         elif seq[0].command == 'u':
-            if andmap(attr("command") == 'u', seq[1:]):
+            if andmap(attr('command') == 'u', seq[1:]):
                 compressed.append(seq[0])
             elif seq[-1].command == 'd':
                 compressed.append(seq[-1])
         elif len(seq) == 1:
             compressed.append(seq[0])
-    compressed.sort(key=attr("order"))
+    compressed.sort(key=attr('order'))
     return compressed
 
 

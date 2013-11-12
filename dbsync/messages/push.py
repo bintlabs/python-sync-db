@@ -112,8 +112,8 @@ class PushMessage(BaseMessage):
     def _portion(self):
         """Returns part of this message as a string."""
         portion = "".join("&{0}#{1}#{2}".\
-                        format(op.row_id, op.content_type_id, op.command)
-                    for op in self.operations)
+                              format(op.row_id, op.content_type_id, op.command)
+                          for op in self.operations)
         return portion
 
     def _sign(self):

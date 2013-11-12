@@ -25,7 +25,7 @@ def types_dict(class_):
 def _encode_table(type_):
     """*type_* is a SQLAlchemy data type."""
     if isinstance(type_, types.Date):
-        return method("toordinal")
+        return method('toordinal')
     elif isinstance(type_, types.DateTime):
         return lambda value: time.mktime(value.timetuple())
     elif isinstance(type_, types.LargeBinary):

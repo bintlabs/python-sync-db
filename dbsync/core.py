@@ -122,8 +122,8 @@ def with_transaction(proc):
     def wrapped(*args, **kwargs):
         session = Session()
         added = []
-        track_added = lambda fn: lambda o, **kwargs: begin(added.append(o),
-                                                           fn(o, **kwargs))
+        track_added = lambda fn: lambda o, **kws: begin(added.append(o),
+                                                        fn(o, **kws))
         session.add = track_added(session.add)
         session.merge = track_added(session.merge)
         result = None
@@ -153,7 +153,7 @@ def generate_content_types():
     session = Session()
     for mname, model in synched_models.iteritems():
         tname = model.__table__.name
-        content_type_id = zlib.crc32('{0}/{1}'.format(mname, tname), 0) \
+        content_type_id = zlib.crc32("{0}/{1}".format(mname, tname), 0) \
             & 0xffffffff
         if session.query(ContentType).\
                 filter(ContentType.table_name == tname).count() == 0:
@@ -195,4 +195,4 @@ def get_latest_version_id(session=None):
     version = session.query(Version).order_by(Version.version_id.desc()).first()
     if closeit:
         session.close()
-    return maybe(version, attr("version_id"), None)
+    return maybe(version, attr('version_id'), None)

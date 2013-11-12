@@ -19,7 +19,7 @@ class ObjectType(object):
         self.__pk__ = pk
         self.__keys__ = []
         for k, v in kwargs.iteritems():
-            if k != "__model_name__" and k != "__pk__" and k != "__keys__":
+            if k != '__model_name__' and k != '__pk__' and k != '__keys__':
                 setattr(self, k, v)
                 self.__keys__.append(k)
 
@@ -85,7 +85,7 @@ class MessageQuery(object):
     def __iter__(self):
         """Yields objects mapped to their original type (*target*)."""
         m = identity if self.target.startswith('models.') \
-            else method("to_mapped_object")
+            else method('to_mapped_object')
         lst = self.payload.get(self.target, None)
         if lst is not None:
             for e in imap(m, lst):
@@ -128,7 +128,7 @@ class BaseMessage(object):
             model = synched_models.get(k, None)
             if model is not None:
                 encoded['payload'][k] = map(encode_dict(model),
-                                            imap(method("to_dict"), objects))
+                                            imap(method('to_dict'), objects))
         return encoded
 
     def add_object(self, obj):

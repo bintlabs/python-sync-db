@@ -71,10 +71,10 @@ def test_message_query():
     # test equal representation, because the test models are well printed
     for b in session.query(B):
         assert repr(b) == repr(message.query(B).filter(
-                attr("id") == b.id).all()[0])
+                attr('id') == b.id).all()[0])
     for op in session.query(models.Operation):
         assert repr(op) == repr(message.query(models.Operation).filter(
-                attr("order") == op.order).all()[0])
+                attr('order') == op.order).all()[0])
     try:
         message.query(1)
         raise Exception("Message query did not fail")

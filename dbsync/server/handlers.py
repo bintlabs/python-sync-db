@@ -149,7 +149,7 @@ def handle_push(data, session=None):
     version = Version(created=datetime.datetime.now(), node_id=message.node_id)
     session.add(version)
     # insert the operations, discarding the 'order' column
-    for op in sorted(message.operations, key=attr("order")):
+    for op in sorted(message.operations, key=attr('order')):
         new_op = Operation()
         for k in ifilter(lambda k: k != 'order', properties_dict(op)):
             setattr(new_op, k, getattr(op, k))
