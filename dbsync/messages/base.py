@@ -136,9 +136,10 @@ class BaseMessage(object):
         class_ = obj.__class__
         classname = class_.__name__
         obj_set = self.payload.get(classname, set())
+        if ObjectType(classname, getattr(obj, get_pk(class_))) in obj_set:
+            return self
         properties = properties_dict(obj)
-        extensions = model_extensions.get(classname, {})
-        for field, ext in extensions.iteritems():
+        for field, ext in model_extensions.get(classname, {}).iteritems():
             _, loadfn, _ = ext
             properties[field] = loadfn(obj)
         obj_set.add(ObjectType(

@@ -4,7 +4,7 @@ Operation compression, both in-memory and in-database.
 
 from dbsync.lang import *
 from dbsync import core
-from dbsync.models import Operation, ContentType
+from dbsync.models import Version, Operation, ContentType
 
 
 def _assert_operation_sequence(seq):
@@ -118,3 +118,11 @@ def unsynched_objects():
         if c is not None]
     session.close()
     return triads
+
+
+@core.with_transaction
+def trim(session=None):
+    """Trims the internal synchronization tables, to free space."""
+    last_id = core.get_latest_version_id(session=session)
+    session.query(Operation).filter(Operation.version_id != None).delete()
+    session.query(Version).filter(Version.version_id != last_id).delete()

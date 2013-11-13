@@ -13,3 +13,4 @@ from dbsync.server.handlers import (
     handle_push,
     handle_repair,
     handle_query)
+from dbsync.server.trim import trim
