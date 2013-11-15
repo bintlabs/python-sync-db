@@ -40,7 +40,9 @@ def encode_dict(class_):
     types to simpler ones, according to the given mapped class."""
     types = types_dict(class_)
     encodings = dict((k, encode(t)) for k, t in types.iteritems())
-    return lambda dict_: dict((k, encodings[k](v)) for k, v in dict_.iteritems())
+    return lambda dict_: dict((k, encodings[k](v))
+                              for k, v in dict_.iteritems()
+                              if k in encodings)
 
 
 def _decode_table(type_):
@@ -61,4 +63,6 @@ def decode_dict(class_):
     types to richer ones, according to the given mapped class."""
     types = types_dict(class_)
     decodings = dict((k, decode(t)) for k, t in types.iteritems())
-    return lambda dict_: dict((k, decodings[k](v)) for k, v in dict_.iteritems())
+    return lambda dict_: dict((k, decodings[k](v))
+                              for k, v in dict_.iteritems()
+                              if k in decodings)
