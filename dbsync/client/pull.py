@@ -221,7 +221,8 @@ def merge(pull_message, session=None):
 class BadResponseError(Exception): pass
 
 
-def pull(pull_url, extra_data=None, encode=None, decode=None, headers=None):
+def pull(pull_url, extra_data=None,
+         encode=None, decode=None, headers=None, monitor=None):
     """Attempts a pull from the server. Returns the response body.
 
     Additional data can be passed to the request by giving
@@ -233,7 +234,11 @@ def pull(pull_url, extra_data=None, encode=None, decode=None, headers=None):
 
     By default, the *encode* function is ``json.dumps``, the *decode*
     function is ``json.loads``, and the *headers* are appropriate HTTP
-    headers for JSON."""
+    headers for JSON.
+
+    *monitor* should be a routine that receives two arguments: the
+    total amount of bytes of the response (``None`` if unknown), and
+    the amount received."""
     assert isinstance(pull_url, basestring), "pull url must be a string"
     assert bool(pull_url), "pull url can't be empty"
     if extra_data is not None:
@@ -244,7 +249,8 @@ def pull(pull_url, extra_data=None, encode=None, decode=None, headers=None):
     data = {'latest_version_id': core.get_latest_version_id()}
     data.update(extra)
 
-    code, reason, response = get_request(pull_url, data, encode, decode, headers)
+    code, reason, response = get_request(
+        pull_url, data, encode, decode, headers, monitor)
 
     if (code // 100 != 2) or response is None:
         raise BadResponseError(code, reason, response)

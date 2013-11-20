@@ -13,7 +13,8 @@ from dbsync.client.net import get_request
 class BadResponseError(Exception): pass
 
 
-def query_server(query_url, encode=None, decode=None, headers=None):
+def query_server(query_url,
+                 encode=None, decode=None, headers=None, monitor=None):
     """Queries the server for a single model's dataset.
 
     This procedure returns a procedure that receives the class and
@@ -24,7 +25,7 @@ def query_server(query_url, encode=None, decode=None, headers=None):
                          for key, value in args.iteritems()))
 
         code, reason, response = get_request(
-            query_url, data, encode, decode, headers)
+            query_url, data, encode, decode, headers, monitor)
 
         if (code // 100 != 2) or response is None:
             raise BadResponseError(code, reason, response)

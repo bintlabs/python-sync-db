@@ -1,3 +1,4 @@
 nose
 sqlalchemy==0.8.0
 Flask
+requests

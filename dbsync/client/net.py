@@ -4,15 +4,12 @@ Send HTTP requests and interpret responses.
 The body returned by each procedure will be a python dictionary
 obtained from parsing a response through a decoder, or ``None`` if the
 decoder raises a ``ValueError``. The default encoder, decoder and
-headers are meant to work with the JSON spec.
+headers are meant to work with the JSON specification.
 
 These procedures will raise a NetworkError in case of network failure.
 """
 
-import socket
-import httplib
-import urllib
-import urlparse
+import requests
 import inspect
 import json
 
@@ -36,53 +33,101 @@ def _defaults(encode, decode, headers):
     return (e, d, h)
 
 
-def post_request(server_url, json_dict, encode=None, decode=None, headers=None):
+def post_request(server_url, json_dict,
+                 encode=None, decode=None, headers=None,
+                 monitor=None):
     """Sends a POST request to *server_url* with data *json_dict* and
-    returns a trio of (code, reason, body)."""
+    returns a trio of (code, reason, body).
+
+    *encode* is a function that transforms a python dictionary into a
+    string.
+
+    *decode* is a function that transforms a string into a python
+    dictionary.
+
+    For all dictionaries d of simple types, decode(encode(d)) == d.
+
+    *headers* is a python dictionary with headers to send.
+
+    *monitor* is a routine that gets called for each chunk of the
+    response received, and is given two arguments: the size of the
+    response in bytes, and the current amount received. If without
+    issue, *monitor* should receive the pair (size, 0) at first, and
+    the pair (size, size) when finished. The size will be ``None`` if
+    it's unknown, in which case the final pair would be
+    (None, actual_size)."""
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
-    scheme, netloc, path, _, _, _ = urlparse.urlparse(server_url)
     enc, dec, hhs = _defaults(encode, decode, headers)
+    stream = inspect.isroutine(monitor)
     try:
-        conn = (httplib.HTTPSConnection if scheme == "https" \
-                    else httplib.HTTPConnection)(netloc)
-        conn.request("POST", path, enc(json_dict), hhs or None)
-        response = conn.getresponse()
+        r = requests.post(server_url, data=enc(json_dict),
+                          headers=hhs or None, stream=stream)
+        response = None
+        if stream:
+            chunks = []
+            total = r.headers.get('content-length', None)
+            partial = 0
+            monitor(total, partial)
+            for chunk in r:
+                partial += len(chunk)
+                monitor(total, partial)
+                chunks.append(chunk)
+            response = str(bytes().join(chunks))
+            response = response.decode(r.encoding, errors='replace') \
+                if r.encoding is not None else response
+        else:
+            response = r.text
         body = None
-        try:
-            body = dec(response.read())
+        try: body = dec(response)
         except ValueError: pass
-        result = (response.status, response.reason, body)
-        conn.close()
+        result = (r.status_code, r.reason, body)
+        r.close()
         return result
-    except socket.error as e:
+    except requests.exceptions.RequestException as e:
         raise NetworkError(*e.args)
 
 
-def get_request(server_url, data=None, encode=None, decode=None, headers=None):
+def get_request(server_url, data=None,
+                encode=None, decode=None, headers=None,
+                monitor=None):
     """Sends a GET request to *server_url*. If *data* is to be added,
     it should be a python dictionary with simple pairs suitable for
-    url encoding. Returns a trio of (code, reason, body)."""
+    url encoding. Returns a trio of (code, reason, body).
+
+    Read the docstring for ``post_request`` for information on the
+    rest."""
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
-    scheme, netloc, path, _, _, _ = urlparse.urlparse(server_url)
-    arguments = ("?" + urllib.urlencode(data)) if data is not None else ""
     enc, dec, hhs = _defaults(encode, decode, headers)
+    stream = inspect.isroutine(monitor)
     try:
-        conn = (httplib.HTTPSConnection if scheme == "https" \
-                    else httplib.HTTPConnection)(netloc)
-        conn.request("GET", path + arguments, headers=hhs or None)
-        response = conn.getresponse()
+        r = requests.get(server_url, params=data,
+                         headers=hhs or None, stream=stream)
+        response = None
+        if stream:
+            chunks = []
+            total = r.headers.get('content-length', None)
+            partial = 0
+            monitor(total, partial)
+            for chunk in r:
+                partial += len(chunk)
+                monitor(total, partial)
+                chunks.append(chunk)
+            response = str(bytes().join(chunks))
+            response = response.decode(r.encoding, errors='replace') \
+                if r.encoding is not None else response
+        else:
+            response = r.text
         body = None
-        try:
-            body = dec(response.read())
+        try: body = dec(response)
         except ValueError: pass
-        result = (response.status, response.reason, body)
-        conn.close()
+        result = (r.status_code, r.reason, body)
+        r.close()
         return result
-    except socket.error as e:
+    except requests.exceptions.RequestException as e:
         raise NetworkError(*e.args)
 
 
@@ -93,13 +138,8 @@ def head_request(server_url):
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
-    scheme, netloc, path, _, _, _ = urlparse.urlparse(server_url)
     try:
-        conn = (httplib.HTTPSConnection if scheme == "https" \
-                    else httplib.HTTPConnection)(netloc)
-        conn.request("HEAD", path)
-        response = conn.getresponse()
-        conn.close()
-        return (response.status, response.reason)
-    except socket.error as e:
+        r = requests.head(server_url)
+        return (r.status_code, r.reason)
+    except requests.exceptions.RequestException as e:
         raise NetworkError(*e.args)

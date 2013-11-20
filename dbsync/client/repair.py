@@ -46,7 +46,8 @@ def repair_database(message, latest_version_id, session=None):
 class BadResponseError(Exception): pass
 
 
-def repair(repair_url, extra_data=None, encode=None, decode=None, headers=None):
+def repair(repair_url, extra_data=None,
+           encode=None, decode=None, headers=None, monitor=None):
     """Fetches the server database and replaces the local one with it.
 
     *extra_data* can be used to add user credentials.
@@ -61,7 +62,7 @@ def repair(repair_url, extra_data=None, encode=None, decode=None, headers=None):
     data = extra_data if extra_data is not None else {}
 
     code, reason, response = get_request(
-        repair_url, data, encode, decode, headers)
+        repair_url, data, encode, decode, headers, monitor)
 
     if (code // 100 != 2) or response is None:
         raise BadResponseError(code, reason, response)
