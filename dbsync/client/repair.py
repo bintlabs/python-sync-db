@@ -64,13 +64,23 @@ def repair(repair_url, extra_data=None,
     code, reason, response = get_request(
         repair_url, data, encode, decode, headers, monitor)
 
-    if (code // 100 != 2) or response is None:
+    if (code // 100 != 2):
+        if monitor: monitor({'status': "error", 'reason': reason.lower()})
+        raise BadResponseError(code, reason, response)
+    if response is None:
+        if monitor: monitor({'status': "error",
+                             'reason': "invalid response format"})
         raise BadResponseError(code, reason, response)
     message = None
     try:
         message = BaseMessage(response)
     except KeyError:
+        if monitor: monitor({'status': "error",
+                             'reason': "invalid message format"})
         raise BadResponseError(
             "response object isn't a valid BaseMessage", response)
+
+    if monitor: monitor({'status': "repairing"})
     repair_database(message, response.get("latest_version_id", None))
+    if monitor: monitor({'status': "done"})
     return response

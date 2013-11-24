@@ -27,12 +27,19 @@ def query_server(query_url,
         code, reason, response = get_request(
             query_url, data, encode, decode, headers, monitor)
 
-        if (code // 100 != 2) or response is None:
+        if (code // 100 != 2):
+            if monitor: monitor({'status': "error", 'reason': reason.lower()})
+            raise BadResponseError(code, reason, response)
+        if response is None:
+            if monitor: monitor({'status': "error",
+                                 'reason': "invalid response format"})
             raise BadResponseError(code, reason, response)
         message = None
         try:
             message = BaseMessage(response)
         except KeyError:
+            if monitor: monitor({'status': "error",
+                                 'reason': "invalid message format"})
             raise BadResponseError(
                 "response object isn't a valid BaseMessage", response)
         return message.query(cls).all()

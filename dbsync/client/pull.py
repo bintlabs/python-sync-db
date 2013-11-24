@@ -252,15 +252,26 @@ def pull(pull_url, extra_data=None,
     code, reason, response = get_request(
         pull_url, data, encode, decode, headers, monitor)
 
-    if (code // 100 != 2) or response is None:
+    if (code // 100 != 2):
+        if monitor: monitor({'status': "error", 'reason': reason.lower()})
+        raise BadResponseError(code, reason, response)
+    if response is None:
+        if monitor: monitor({'status': "error",
+                             'reason': "invalid response format"})
         raise BadResponseError(code, reason, response)
     message = None
     try:
         message = PullMessage(response)
     except KeyError:
+        if monitor: monitor({'status': "error",
+                             'reason': "invalid message format"})
         raise BadResponseError(
             "response object isn't a valid PullMessage", response)
+
+    if monitor: monitor({'status': "merging",
+                         'operations': len(message.operations)})
     merge(message)
+    if monitor: monitor({'status': "done"})
     # return the response for the programmer to do what she wants
     # afterwards
     return response

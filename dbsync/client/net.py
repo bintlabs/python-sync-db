@@ -66,13 +66,14 @@ def post_request(server_url, json_dict,
                           headers=hhs or None, stream=stream)
         response = None
         if stream:
-            chunks = []
             total = r.headers.get('content-length', None)
             partial = 0
-            monitor(total, partial)
+            monitor({'status': "connect", 'size': total})
+            chunks = []
             for chunk in r:
                 partial += len(chunk)
-                monitor(total, partial)
+                monitor({'status': "downloading",
+                         'size': total, 'received': partial})
                 chunks.append(chunk)
             response = str(bytes().join(chunks))
             response = response.decode(r.encoding, errors='replace') \
@@ -86,6 +87,7 @@ def post_request(server_url, json_dict,
         r.close()
         return result
     except requests.exceptions.RequestException as e:
+        if stream: monitor({'status': "error", 'reason': "network error"})
         raise NetworkError(*e.args)
 
 
@@ -108,13 +110,14 @@ def get_request(server_url, data=None,
                          headers=hhs or None, stream=stream)
         response = None
         if stream:
-            chunks = []
             total = r.headers.get('content-length', None)
             partial = 0
-            monitor(total, partial)
+            monitor({'status': "connect", 'size': total})
+            chunks = []
             for chunk in r:
                 partial += len(chunk)
-                monitor(total, partial)
+                monitor({'status': "downloading",
+                         'size': total, 'received': partial})
                 chunks.append(chunk)
             response = str(bytes().join(chunks))
             response = response.decode(r.encoding, errors='replace') \
@@ -128,6 +131,7 @@ def get_request(server_url, data=None,
         r.close()
         return result
     except requests.exceptions.RequestException as e:
+        if stream: monitor({'status': "error", 'reason': "network error"})
         raise NetworkError(*e.args)
 
 
