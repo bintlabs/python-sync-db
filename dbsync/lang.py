@@ -113,6 +113,8 @@ class Function(object):
             return Function(lambda obj: self.fn(obj) or other(obj))
         else:
             return Function(lambda obj: self.fn(obj) or other)
+    def in_(self, collection):
+        return Function(lambda obj: self.fn(obj) in collection)
 
 
 def attr(name):

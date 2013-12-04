@@ -146,7 +146,8 @@ def merge(pull_message, session=None):
         mfilter(exclude, insert_conflicts)
         unversioned_ops.remove(local)
 
-    for pull_op in pull_ops:
+    valid_cts = set(ct.content_type_id for ct in content_types)
+    for pull_op in ifilter(attr('content_type_id').in_(valid_cts), pull_ops):
         # flag to control whether the remote operation is free of obstacles
         can_perform = True
         # the content type and class of the operation
