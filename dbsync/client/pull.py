@@ -112,12 +112,15 @@ def merge(pull_message, session=None):
         raise TypeError("need an instance of dbsync.messages.pull.PullMessage "\
                             "to perform the local merge operation")
     content_types = session.query(ContentType).all()
+    valid_cts = set(ct.content_type_id for ct in content_types)
     # preamble: detect conflicts between pulled operations and unversioned ones
     compress()
     unversioned_ops = session.query(Operation).\
         filter(Operation.version_id == None).\
         order_by(Operation.order.asc()).all()
-    pull_ops = compressed_operations(pull_message.operations)
+    pull_ops = filter(attr('content_type_id').in_(valid_cts),
+                      pull_message.operations)
+    pull_ops = compressed_operations(pull_ops)
 
     direct_conflicts = find_direct_conflicts(pull_ops, unversioned_ops)
 
@@ -146,8 +149,7 @@ def merge(pull_message, session=None):
         mfilter(exclude, insert_conflicts)
         unversioned_ops.remove(local)
 
-    valid_cts = set(ct.content_type_id for ct in content_types)
-    for pull_op in ifilter(attr('content_type_id').in_(valid_cts), pull_ops):
+    for pull_op in pull_ops:
         # flag to control whether the remote operation is free of obstacles
         can_perform = True
         # the content type and class of the operation
