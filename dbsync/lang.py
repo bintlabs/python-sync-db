@@ -174,7 +174,7 @@ def lookup(predicate, collection, default=None):
 def mfilter(predicate, lst):
     """Removes the elements in *lst* that don't satisfy *predictate*,
     mutating *lst* (a list or a set)."""
-    print predicate, lst
+    print predicate
     matching = filter(lambda e: not predicate(e), lst)
     for e in matching:
         lst.remove(e)
