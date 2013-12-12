@@ -142,7 +142,7 @@ def merge(pull_message, session=None):
 
     def purgelocal(local):
         session.delete(local)
-        exclude = lambda _, lop: lop is not local
+        exclude = lambda tup: tup[1] is not local
         mfilter(exclude, direct_conflicts)
         mfilter(exclude, dependency_conflicts)
         mfilter(exclude, reversed_dependency_conflicts)
