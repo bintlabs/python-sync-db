@@ -171,7 +171,7 @@ def merge(pull_message, session=None):
                 elif pair == ('d', 'u'):
                     local.command = 'i' # negate the remote delete 
                 else: # ('d', 'd')
-                    pass # nothing to do
+                    purgelocal(local)
 
         dependency = extract(pull_op, dependency_conflicts)
         if dependency:
