@@ -76,15 +76,31 @@ def compressed_operations(operations):
                     sorted(operations, key=attr('order')))
     compressed = []
     for seq in seqs.itervalues():
-        if seq[0].command == 'i' and andmap(attr('command') == 'u', seq[1:]):
+        if len(seq) == 1:
             compressed.append(seq[0])
-        elif seq[0].command == 'u':
-            if andmap(attr('command') == 'u', seq[1:]):
+        elif seq[0].command == 'i':
+            if seq[-1].command == 'd':
+                pass
+            else:
                 compressed.append(seq[0])
-            elif seq[-1].command == 'd':
+        elif seq[0].command == 'u':
+            if seq[-1].command == 'd':
                 compressed.append(seq[-1])
-        elif len(seq) == 1:
-            compressed.append(seq[0])
+            else:
+                compressed.append(seq[0])
+        else: # seq[0].command == 'd':
+            if seq[-1].command == 'd':
+                compressed.append(seq[0])
+            elif seq[-1].command == 'u':
+                compressed.append(seq[-1])
+            else: # seq[-1].command == 'i':
+                op = seq[-1]
+                compressed.append(
+                    Operation(order=op.order,
+                              content_type_id=op.content_type_id,
+                              row_id=op.row_id,
+                              version_id=op.version_id,
+                              command='u'))
     compressed.sort(key=attr('order'))
     return compressed
 
