@@ -113,6 +113,7 @@ def handle_pull(data):
 class PushRejected(Exception): pass
 
 
+
 @core.with_listening(False)
 @core.with_transaction
 def handle_push(data, session=None):
@@ -141,8 +142,10 @@ def handle_push(data, session=None):
     try:
         content_types = session.query(ContentType).all()
         for op in message.operations:
-            op.perform(content_types, core.synched_models, message, session)
+            op.perform(content_types, core.synched_models, message, session, message.node_id)
     except OperationError as e:
+        core.save_log('handlers.push.OperationError', 
+            message.node_id, [repr(arg) for arg in e.args])
         raise PushRejected("at least one operation couldn't be performed",
                            *e.args)
     # insert a new version

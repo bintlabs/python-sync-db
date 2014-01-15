@@ -1,7 +1,7 @@
 """
 Internal model used to keep track of versions and operations.
 """
-
+import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship, backref, validates
 from sqlalchemy.ext.declarative import declarative_base
@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, query_model
+import dbsync.core
 
 
 #: Database tables prefix.
@@ -112,7 +113,7 @@ class Operation(Base):
         return u"<Operation row_id: {0}, content_type_id: {1}, command: {2}>".\
             format(self.row_id, self.content_type_id, self.command)
 
-    def perform(operation, content_types, synched_models, container, session):
+    def perform(operation, content_types, synched_models, container, session, node_id=None):
         """Performs *operation*, looking for required data and
         metadata in *content_types*, *synched_models*, and
         *container*, and using *session* to perform it.
@@ -143,8 +144,15 @@ class Operation(Base):
             obj = query_model(session, model).\
                 filter(getattr(model, get_pk(model)) == operation.row_id).first()
             if obj is None:
-                raise OperationError(
-                    "the referenced object doesn't exist in database", operation)
+                # What should be done in this case !!!
+                # For now, the record will be created again, but is an error
+                # because nothing should be deleted without using dbsync
+                # raise OperationError(
+                #     "the referenced object doesn't exist in database", operation)
+                dbsync.core.save_log("models.update", node_id,
+                    ["the referenced object doesn't exist in database", operation])
+                pass
+
             pull_objs = container.query(model).\
                 filter(attr('__pk__') == operation.row_id).all()
             if not pull_objs:
@@ -156,11 +164,38 @@ class Operation(Base):
             obj = query_model(session, model, only_pk=True).\
                 filter(getattr(model, get_pk(model)) == operation.row_id).first()
             if obj is None:
-                raise OperationError(
-                    "the referenced object doesn't exist in database", operation)
-            session.delete(obj)
+                # The object is already delete in the server
+                # The final state in node and server are the same. But is an error
+                # because nothing should be deleted without using dbsync
+                # raise OperationError(
+                #     "the referenced object doesn't exist in database", "roolback", operation)
+                dbsync.core.save_log("models.delete", node_id,
+                    ["the referenced object doesn't exist in database", operation])
+                pass
+            else:
+                session.delete(obj)
 
         else:
             raise OperationError(
                 "the operation doesn't specify a valid command ('i', 'u', 'd')",
                 operation)
+
+
+class Log(Base):
+    """Error log"""
+
+    __tablename__ = "logs"
+    
+    id = Column(Integer, primary_key=True)
+    created = Column(DateTime)
+    source = Column(String(64)) 
+    error = Column(String(2048))
+    node_id = Column(Integer, ForeignKey(Node.__tablename__ + ".node_id"))
+
+    def __init__(self, *args, **kwargs):
+        self.created = datetime.datetime.now()
+        super(Log, self).__init__(*args, **kwargs)
+
+    def __repr__(self):
+        return u"<Log log_id: {0}, source: {1}, node_id: {2}>".\
+            format(self.log_id, self.source, self.node_id)

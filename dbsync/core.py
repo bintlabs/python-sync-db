@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from dbsync.lang import *
 from dbsync.utils import get_pk
-from dbsync.models import ContentType, Operation, Version
+from dbsync.models import ContentType, Operation, Version, Log
 
 
 _SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
@@ -196,3 +196,15 @@ def get_latest_version_id(session=None):
     if closeit:
         session.close()
     return maybe(version, attr('version_id'), None)
+
+
+def save_log(source, node_id, errors):
+    """Insert record in Log table"""
+    session = Session()
+    new_log = Log()
+    new_log.source = source
+    new_log.node_id = node_id
+    new_log.error = ", ".join([repr(arg) for arg in errors])
+    session.add(new_log)
+    session.commit()
+    session.close()

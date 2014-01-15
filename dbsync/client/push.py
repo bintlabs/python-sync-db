@@ -14,6 +14,23 @@ from dbsync.client.net import post_request
 
 class PushRejected(Exception): pass
 
+def roolback_op(row_id, content_type_id, command):
+    """Removes unversioned operation from dbsync_operations table.
+    This function should be use only in specific cases, when the final
+    result state of the database not become inconsistent.
+    A tipical case could be when the node deletes a record, then, in push
+    procedure, the server respond that the record has been previously deleted.
+    The final state of the server and local database are the same.
+    TODO: Should respond with the operation result"""
+    session = core.Session()
+    ops = session.query(Operation).filter(Operation.row_id == row_id, 
+        Operation.content_type_id == content_type_id,
+        Operation.command == command,
+        Operation.version_id == None).all()
+    for op in ops:
+         session.delete(op)
+    session.commit()
+    session.close()
 
 @core.with_transaction
 def push(push_url, extra_data=None,
