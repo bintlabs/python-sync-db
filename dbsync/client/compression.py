@@ -7,7 +7,7 @@ from dbsync import core
 from dbsync.models import Version, Operation, ContentType
 
 
-def _assert_operation_sequence(seq):
+def _assert_operation_sequence(seq, session=None):
     """Asserts the correctness of a sequence of operations over a
     single tracked object.
 
@@ -27,10 +27,24 @@ def _assert_operation_sequence(seq):
     # the sequence
     assert all(op.command == 'u' for op in seq[1:-1]), message
     if len(seq) > 1:
-        # can't have anything after a delete
-        assert seq[-1] != 'd', message
-        # can't have anything before an insert
-        assert seq[0] != 'i', message
+        try:
+            # can't have anything after a delete
+            assert seq[-1].command != 'd', message
+        except:
+            # repair the sequence
+            # if session is not None:
+                # map(session.delete, seq[:-1])
+            core.save_log("_assert_operation_sequence",
+                None, ["Operations after an delete", seq])
+        try:
+            # can't have anything before an insert
+            assert seq[0].command != 'i', message
+        except:
+            # repair the sequence
+            if session is not None:
+                map(session.delete, seq[1:])
+            core.save_log("_assert_operation_sequence",
+                None, ["Operations before an insert", seq])
 
 
 def compress():
@@ -46,8 +60,9 @@ def compress():
         filter(Operation.version_id == None).order_by(Operation.order.desc())
     seqs = group_by(lambda op: (op.row_id, op.content_type_id), unversioned)
 
+    # Check errors on sequences, and repair if needed
     for seq in seqs.itervalues():
-        _assert_operation_sequence(seq)
+        _assert_operation_sequence(seq, session)
 
     for seq in ifilter(lambda seq: len(seq) > 1, seqs.itervalues()):
         if seq[-1].command == 'i':

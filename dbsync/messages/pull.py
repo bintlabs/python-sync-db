@@ -123,10 +123,14 @@ class PullMessage(BaseMessage):
         This method will either fail and leave the message instance as
         if nothing had happened, or it will succeed and return the
         modified message."""
-        if any(op.content_type.model_name not in synched_models
-               for op in v.operations):
-            raise ValueError("version includes operation linked "\
-                                 "to model not currently being tracked")
+        for op in v.operations:
+            if op.content_type.model_name not in synched_models:
+                raise ValueError("version includes operation linked "\
+                                 "to model not currently being tracked", op)
+        # if any(op.content_type.model_name not in synched_models
+        #        for op in v.operations):
+        #     raise ValueError("version includes operation linked "\
+        #                          "to model not currently being tracked", bad_op)
         closeit = session is None
         session = Session() if closeit else session
         self.versions.append(v)
