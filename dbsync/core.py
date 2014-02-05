@@ -108,6 +108,7 @@ def with_listening(enabled):
                 return result
             except:
                 toggle_listening(prev)
+                print args, kwargs
                 raise
         return wrapped
     return wrapper
@@ -121,6 +122,11 @@ def with_transaction(proc):
     @wraps(proc)
     def wrapped(*args, **kwargs):
         session = Session()
+        engine = get_engine()
+        # For now only works with sqlite
+        if engine.dialect.name == 'sqlite':
+            session.execute('BEGIN EXCLUSIVE TRANSACTION;')
+            session.execute('pragma foreign_keys=OFF;')
         added = []
         track_added = lambda fn: lambda o, **kws: begin(added.append(o),
                                                         fn(o, **kws))
@@ -131,9 +137,11 @@ def with_transaction(proc):
             kwargs.update({'session': session})
             result = proc(*args, **kwargs)
             session.commit()
+            #session.execute('END TRANSACTION;')
             session.close()
         except:
             session.rollback()
+            #session.execute('END TRANSACTION;')
             session.close()
             raise
         for obj in added:

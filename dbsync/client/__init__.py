@@ -9,7 +9,11 @@ yet.
 from dbsync.client.compression import unsynched_objects, trim
 from dbsync.client.tracking import track
 from dbsync.core import extend
-from dbsync.client.register import register, isregistered
+from dbsync.client.register import (
+	register,
+	isregistered,
+	get_node,
+	save_node)
 from dbsync.client.pull import pull
 from dbsync.client.push import push, roolback_op
 from dbsync.client.ping import isconnected, isready

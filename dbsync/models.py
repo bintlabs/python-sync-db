@@ -51,6 +51,9 @@ class Node(Base):
     registry_user_id = Column(Integer)
     secret = Column(String(128))
 
+    def __init__(self, *args, **kwargs):
+        super(Node, self).__init__(*args, **kwargs)
+
     def __repr__(self):
         return u"<Node node_id: {0}, registered: {1}, "\
             u"registry_user_id: {2}, secret: {3}>".\
