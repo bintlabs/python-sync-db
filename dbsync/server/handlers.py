@@ -88,12 +88,18 @@ def handle_register(user_id=None, session=None):
     return message.to_json()
 
 
-def handle_pull(data):
+def handle_pull(data, extra_data=None):
     """Handle the pull request and return a dictionary object to be
     sent back to the node.
 
     *data* must be a dictionary-like object, usually one containing
-    the GET parameters of the request."""
+    the GET parameters of the request.
+
+    *extra_data* Additional information to be send back to client"""
+    extra = dict((k, v) for k, v in extra_data.iteritems()
+                if k not in ('operations', 'created', 'payload', 'versions')) \
+                if extra_data is not None else {}
+
     session = core.Session()
     latest_version_id = data.get('latest_version_id', None)
     try:
@@ -103,7 +109,7 @@ def handle_pull(data):
     versions = session.query(Version)
     if latest_version_id is not None:
         versions = versions.filter(Version.version_id > latest_version_id)
-    message = PullMessage()
+    message = PullMessage(extra_data=extra)
     for v in versions:
         message.add_version(v, session=session)
     session.close()
