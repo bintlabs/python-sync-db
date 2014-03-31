@@ -133,7 +133,6 @@ def merge(pull_message, session=None):
         pull_ops, unversioned_ops, content_types, pull_message)
 
     insert_conflicts = find_insert_conflicts(pull_ops, unversioned_ops)
-
     # merge transaction
     # first phase: perform pull operations, when allowed and while
     # resolving conflicts
@@ -207,14 +206,14 @@ def merge(pull_message, session=None):
                           max_local(ct, session)) + 1
             update_local_id(local.row_id, next_id, ct, content_types, session)
             local.row_id = next_id
-
         if can_perform:
             pull_op.perform(content_types,
                             core.synched_models,
                             pull_message,
                             session)
             try: session.flush()
-            except IntegrityError as e: raise enrich_error(e, pull_op, class_)
+            except IntegrityError as e:
+                raise enrich_error(e, pull_op, class_)
 
     # second phase: insert versions from the pull_message
     for pull_version in pull_message.versions:
@@ -254,7 +253,6 @@ def pull(pull_url, extra_data=None,
 
     code, reason, response = get_request(
         pull_url, data, encode, decode, headers, monitor)
-
     if (code // 100 != 2):
         if monitor: monitor({'status': "error", 'reason': reason.lower()})
         raise BadResponseError(code, reason, response)

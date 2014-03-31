@@ -53,7 +53,10 @@ def maybe(value, fn=identity, default=""):
     """``if value is None: ...`` more compressed."""
     if value is None:
         return default
-    return fn(value)
+    try:
+        return fn(value)
+    except:
+        return default
 
 
 def guard(f):
