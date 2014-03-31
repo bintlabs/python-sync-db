@@ -54,9 +54,9 @@ def maybe(value, fn=identity, default=""):
     if value is None:
         return default
     try:
-        print value
         return fn(value)
     except:
+        print value
         return default
 
 
