@@ -86,7 +86,28 @@ def post_request(server_url, json_dict,
         result = (r.status_code, r.reason, body)
         r.close()
         return result
+
+    except requests.exceptions.ConnectionError as e:
+        if stream: monitor({'status': "error", 'reason': "connection error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.HTTPError as e:
+        if stream: monitor({'status': "error", 'reason': "http error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.Timeout as e:
+        if stream: monitor({'status': "error", 'reason': "timeout error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.TooManyRedirects as e:
+        if stream: monitor({'status': "error", 'reason': "too many redirects error"})
+        raise NetworkError(*e.args)
+
     except requests.exceptions.RequestException as e:
+        if stream: monitor({'status': "error", 'reason': "network error"})
+        raise NetworkError(*e.args)
+
+    except Exception as e:
         if stream: monitor({'status': "error", 'reason': "network error"})
         raise NetworkError(*e.args)
 
@@ -130,7 +151,28 @@ def get_request(server_url, data=None,
         result = (r.status_code, r.reason, body)
         r.close()
         return result
+
+    except requests.exceptions.ConnectionError as e:
+        if stream: monitor({'status': "error", 'reason': "connection error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.HTTPError as e:
+        if stream: monitor({'status': "error", 'reason': "http error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.Timeout as e:
+        if stream: monitor({'status': "error", 'reason': "timeout error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.TooManyRedirects as e:
+        if stream: monitor({'status': "error", 'reason': "too many redirects error"})
+        raise NetworkError(*e.args)
+
     except requests.exceptions.RequestException as e:
+        if stream: monitor({'status': "error", 'reason': "network error"})
+        raise NetworkError(*e.args)
+
+    except Exception as e:
         if stream: monitor({'status': "error", 'reason': "network error"})
         raise NetworkError(*e.args)
 
@@ -145,5 +187,27 @@ def head_request(server_url):
     try:
         r = requests.head(server_url)
         return (r.status_code, r.reason)
+    
+    except requests.exceptions.ConnectionError as e:
+        if stream: monitor({'status': "error", 'reason': "connection error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.HTTPError as e:
+        if stream: monitor({'status': "error", 'reason': "http error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.Timeout as e:
+        if stream: monitor({'status': "error", 'reason': "timeout error"})
+        raise NetworkError(*e.args)
+
+    except requests.exceptions.TooManyRedirects as e:
+        if stream: monitor({'status': "error", 'reason': "too many redirects error"})
+        raise NetworkError(*e.args)
+
     except requests.exceptions.RequestException as e:
+        if stream: monitor({'status': "error", 'reason': "network error"})
+        raise NetworkError(*e.args)
+
+    except Exception as e:
+        if stream: monitor({'status': "error", 'reason': "network error"})
         raise NetworkError(*e.args)
