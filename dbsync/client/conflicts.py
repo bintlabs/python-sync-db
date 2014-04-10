@@ -14,6 +14,7 @@ horizontally decentralized relational databases. `Link to pdf`__.
 """
 
 from sqlalchemy import or_
+from sqlalchemy.schema import UniqueConstraint
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, class_mapper, query_model
@@ -133,7 +134,10 @@ def find_direct_conflicts(pull_ops, unversioned_ops):
         if pull_op.content_type_id == local_op.content_type_id]
 
 
-def find_dependency_conflicts(pull_ops, unversioned_ops, content_types, session):
+def find_dependency_conflicts(
+        pull_ops, unversioned_ops,
+        content_types,
+        session):
     """Detect conflicts by relationship dependency: deletes on the
     pull message on objects that have dependent objects inserted or
     updated on the local database."""
@@ -150,10 +154,11 @@ def find_dependency_conflicts(pull_ops, unversioned_ops, content_types, session)
         if (local_op.row_id, local_op.content_type_id) in related_ids[pull_op]]
 
 
-def find_reversed_dependency_conflicts(pull_ops,
-                                       unversioned_ops,
-                                       content_types,
-                                       pull_message):
+def find_reversed_dependency_conflicts(
+        pull_ops,
+        unversioned_ops,
+        content_types,
+        pull_message):
     """Deletes on the local database on objects that are referenced by
     inserted or updated objects in the pull message."""
     related_ids = dict(
@@ -183,3 +188,100 @@ def find_insert_conflicts(pull_ops, unversioned_ops):
         if pull_op.command == 'i'
         if pull_op.row_id == local_op.row_id
         if pull_op.content_type_id == local_op.content_type_id]
+
+
+def find_unique_conflicts(
+        pull_ops, unversioned_ops,
+        pull_message, content_types, session):
+    """Unique constraint violated in a same Model.
+    Returns a set of (remote_id, local_id, type) pairs of objet that vioalted
+    the unique constraints on his Model.
+    type: Define the type of violation. Human error or dbsync error"""
+
+    def verify_constraint(model, column, value, remote_id, session):
+        match = session.query(model).\
+            filter(
+                getattr(model, column) == value).first()
+        # Filter by pk
+        mapper = class_mapper(model)
+        # For now assumes only one PK
+        pk = mapper.primary_key[0]
+        return match, getattr(match, pk.name) if match is not None else None
+
+    def get_remote_value(model, row_id, column, container):
+        obj = container.query(model).\
+            filter(attr('__pk__') == row_id).all()
+        # can be only one
+        return getattr(obj[0], column)
+        #return obj
+
+    bad_ones = []
+
+    for op in pull_ops:
+
+        ct = lookup(
+            attr('content_type_id') == op.content_type_id,
+            content_types)
+        model = synched_models.get(ct.model_name, None)
+        #print model.__table__.constraints
+        for c in model.__table__.constraints:
+            if type(c) is UniqueConstraint:
+                # Assumes unique constraint in only one column
+                uqc = c._pending_colargs[0]
+                # Server unique value to check conflicts with local db
+                remote_value = get_remote_value(
+                    model, op.row_id, uqc, pull_message)
+                obj_conflict, pk_conflict = verify_constraint(
+                    model, uqc, remote_value, op.row_id, session)
+
+                is_unversioned = pk_conflict in map(
+                    lambda x: x.row_id, unversioned_ops)
+
+                if remote_value is not None:  # Null value
+
+                    if pk_conflict is None:
+                        pass  # No problem!!
+                    elif pk_conflict == op.row_id:
+                        if is_unversioned:
+                            # Two nodes creates objects with the same
+                            # unique value and same pk
+                            pass
+                        else:
+                            # The object is the same
+                            pass
+                    elif pk_conflict != op.row_id:
+
+                        robject = pull_message.query(model).\
+                            filter(attr('__pk__') == pk_conflict).all()
+
+                        if len(robject) > 0 and not is_unversioned:
+                            value = getattr(obj_conflict, uqc)
+                            # The new unique value of the conflictive
+                            # object in server
+                            new_value = getattr(robject[0], uqc)
+                            if value != new_value:
+                                # Library error
+                                # Is necesary first update the unique value
+                                type_ = "lib"
+                                bad_ones.append({
+                                    'op': (obj_conflict, uqc, new_value),
+                                    'type': type_})
+                            else:
+                                # The server allows two identical unique values
+                                # This should be impossible
+                                pass
+                        elif len(robject) > 0 and is_unversioned:
+                            # Two nodes creates objects with the same unique
+                            # value and pk Human error!!
+                            type_ = "human"
+                            bad_ones.append({
+                                'op': (op.row_id, pk_conflict),
+                                'type': type_})
+                        else:
+                            # Two nodes creates objects with the same
+                            # unique value. Im not sure about this case
+                            pass
+                    else:
+                        # unespected error
+                        pass
+    return bad_ones

@@ -15,6 +15,7 @@ import dbsync.core
 #: Database tables prefix.
 tablename_prefix = "sync_"
 
+
 class PrefixTables(DeclarativeMeta):
     def __init__(cls, classname, bases, dict_):
         if '__tablename__' in dict_:

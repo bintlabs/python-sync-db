@@ -19,7 +19,8 @@ from dbsync.client.conflicts import (
     find_direct_conflicts,
     find_dependency_conflicts,
     find_reversed_dependency_conflicts,
-    find_insert_conflicts)
+    find_insert_conflicts,
+    find_unique_conflicts)
 from dbsync.client.net import get_request
 
 
@@ -33,11 +34,13 @@ def max_local(ct, session):
         raise ValueError("can't find model for content type {0}".format(ct))
     return session.query(func.max(getattr(model, get_pk(model)))).scalar()
 
+
 def max_remote(ct, container):
     """Returns the maximum value for the primary key of the given
     content type in the container."""
     return max(getattr(obj, get_pk(obj))
                for obj in container.query(ct.model_name))
+
 
 def update_local_id(old_id, new_id, ct, content_types, session):
     """Updates the tuple matching *old_id* with *new_id*, and updates
@@ -51,6 +54,7 @@ def update_local_id(old_id, new_id, ct, content_types, session):
     obj = query_model(session, model, only_pk=True).\
         filter_by(**{get_pk(model): old_id}).first()
     setattr(obj, get_pk(model), new_id)
+
     # Then the dependent ones
     def get_model(table):
         return core.synched_models.get(
@@ -66,12 +70,13 @@ def update_local_id(old_id, new_id, ct, content_types, session):
         for fk in fks:
             for obj in query_model(session, model).filter_by(**{fk: old_id}):
                 setattr(obj, fk, new_id)
-    session.flush() # raise integrity errors now
+    session.flush()  # raise integrity errors now
 
 
 # TODO make enrich_error better at detecting columns and values
 # This is frail but I can't think of another way
 integrity_error_match = re.compile("^column\s(\w+)\sis\snot\sunique$").match
+
 
 def enrich_error(error, operation, class_):
     """Fill the error with additional information, such as the class
@@ -91,14 +96,16 @@ def enrich_error(error, operation, class_):
             hasattr(error, 'statement') and \
             hasattr(error, 'params'):
         statement = error.statement
-        col_tuple = "".join(takewhile(lambda c: c != ")",
-                                      dropwhile(lambda c: c != "(", statement)))
+        col_tuple = "".join(takewhile(
+                            lambda c: c != ")",
+                            dropwhile(lambda c: c != "(", statement)))
         col_index = -1
         try:
             col_index = map(lambda s: s.strip(), col_tuple[1:].split(",")).\
                 index(error.conflicting_column)
             error.conflicting_value = error.params[col_index]
-        except ValueError: pass
+        except ValueError:
+            pass
     return error
 
 
@@ -109,8 +116,8 @@ def merge(pull_message, session=None):
 
     *pull_message* is an instance of dbsync.messages.pull.PullMessage."""
     if not isinstance(pull_message, PullMessage):
-        raise TypeError("need an instance of dbsync.messages.pull.PullMessage "\
-                            "to perform the local merge operation")
+        raise TypeError("need an instance of dbsync.messages.pull.PullMessage "
+                        "to perform the local merge operation")
     content_types = session.query(ContentType).all()
     valid_cts = set(ct.content_type_id for ct in content_types)
     # preamble: detect conflicts between pulled operations and unversioned ones
@@ -133,6 +140,11 @@ def merge(pull_message, session=None):
         pull_ops, unversioned_ops, content_types, pull_message)
 
     insert_conflicts = find_insert_conflicts(pull_ops, unversioned_ops)
+
+    # Unique constraint conflicts
+    unique_conflicts = find_unique_conflicts(
+        pull_ops, unversioned_ops, pull_message, content_types, session)
+
     # merge transaction
     # first phase: perform pull operations, when allowed and while
     # resolving conflicts
@@ -147,6 +159,19 @@ def merge(pull_message, session=None):
         mfilter(exclude, reversed_dependency_conflicts)
         mfilter(exclude, insert_conflicts)
         unversioned_ops.remove(local)
+
+    def repair_lib_unique_error(obj, column, new_value, session):
+        """Allows to changes prematurely
+        the unique value of conflictive object"""
+        setattr(obj, column, new_value)
+        session.add(obj)
+
+    for uc in unique_conflicts:
+        if uc['type'] == 'lib':
+            obj = uc['op'][0]
+            column = uc['op'][1]
+            value = uc['op'][2]
+            repair_lib_unique_error(obj, column, value, session)
 
     for pull_op in pull_ops:
         # flag to control whether the remote operation is free of obstacles
@@ -163,13 +188,13 @@ def merge(pull_message, session=None):
             for local in direct:
                 pair = (pull_op.command, local.command)
                 if pair == ('u', 'u'):
-                    can_perform = False # favor local changes over remote ones
+                    can_perform = False  # favor local changes over remote ones
                 elif pair == ('u', 'd'):
-                    pull_op.command = 'i' # negate the local delete
+                    pull_op.command = 'i'  # negate the local delete
                     purgelocal(local)
                 elif pair == ('d', 'u'):
-                    local.command = 'i' # negate the remote delete 
-                else: # ('d', 'd')
+                    local.command = 'i'  # negate the remote delete
+                else:  # ('d', 'd')
                     purgelocal(local)
 
         dependency = extract(pull_op, dependency_conflicts)
@@ -211,7 +236,8 @@ def merge(pull_message, session=None):
                             core.synched_models,
                             pull_message,
                             session)
-            try: session.flush()
+            try:
+                session.flush()
             except IntegrityError as e:
                 raise enrich_error(e, pull_op, class_)
 
@@ -220,7 +246,8 @@ def merge(pull_message, session=None):
         session.add(pull_version)
 
 
-class BadResponseError(Exception): pass
+class BadResponseError(Exception):
+    pass
 
 
 def pull(pull_url, extra_data=None,
@@ -254,25 +281,33 @@ def pull(pull_url, extra_data=None,
     code, reason, response = get_request(
         pull_url, data, encode, decode, headers, monitor)
     if (code // 100 != 2):
-        if monitor: monitor({'status': "error", 'reason': reason.lower()})
+        if monitor:
+            monitor({'status': "error", 'reason': reason.lower()})
         raise BadResponseError(code, reason, response)
     if response is None:
-        if monitor: monitor({'status': "error",
-                             'reason': "invalid response format"})
+        if monitor:
+            monitor({
+                'status': "error",
+                'reason': "invalid response format"})
         raise BadResponseError(code, reason, response)
     message = None
     try:
         message = PullMessage(response)
     except KeyError:
-        if monitor: monitor({'status': "error",
-                             'reason': "invalid message format"})
+        if monitor:
+            monitor({
+                'status': "error",
+                'reason': "invalid message format"})
         raise BadResponseError(
             "response object isn't a valid PullMessage", response)
 
-    if monitor: monitor({'status': "merging",
-                         'operations': len(message.operations)})
+    if monitor:
+        monitor({
+            'status': "merging",
+            'operations': len(message.operations)})
     merge(message)
-    if monitor: monitor({'status': "done"})
+    if monitor:
+        monitor({'status': "done"})
     # return the response for the programmer to do what she wants
     # afterwards
     return response
