@@ -212,7 +212,10 @@ def find_unique_conflicts(
         obj = container.query(model).\
             filter(attr('__pk__') == row_id).all()
         # can be only one
-        return getattr(obj[0], column)
+        if obj is not None and len(obj) > 0:
+            return getattr(obj[0], column)
+        else:
+            return None
         #return obj
 
     bad_ones = []
@@ -237,7 +240,7 @@ def find_unique_conflicts(
                 is_unversioned = pk_conflict in map(
                     lambda x: x.row_id, unversioned_ops)
 
-                if remote_value is not None:  # Null value
+                if remote_value is not None and remote_value.strip() != "":  # Null value
 
                     if pk_conflict is None:
                         pass  # No problem!!
