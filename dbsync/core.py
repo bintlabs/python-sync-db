@@ -12,9 +12,9 @@ from dbsync.utils import get_pk
 from dbsync.models import ContentType, Operation, Version, Log
 
 
-_SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
+SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
 def Session():
-    s = _SessionClass(bind=get_engine())
+    s = SessionClass(bind=get_engine())
     s._model_changes = dict() # for flask-sqlalchemy
     return s
 

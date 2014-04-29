@@ -45,13 +45,13 @@ class PullMessage(BaseMessage):
         (add_*).
         *extra_data*: dict with additional information is needed"""
         super(PullMessage, self).__init__(raw_data)
+        self.extra_data = extra_data
         if raw_data is not None:
             self._build_from_raw(raw_data)
         else:
             self.created = datetime.datetime.now()
             self.operations = []
             self.versions = []
-            self.extra_data = extra_data or None
 
     def _build_from_raw(self, data):
         self.created = decode(types.DateTime())(data['created'])
