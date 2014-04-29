@@ -26,7 +26,7 @@ def changestuff():
     a1, a2 = session.query(A)
     b1, b2, b3 = session.query(B)
     a1.name = "first a modified"
-    b2.a = a2 # this triggers two 'updates', one is superfluous
+    b2.a = a2
     session.delete(b3)
     session.commit()
 
@@ -52,7 +52,7 @@ def test_tracking():
         count() == 5, "insert operations don't match"
     assert session.query(models.Operation).\
         filter(models.Operation.command == 'u').\
-        count() == 3, "update operations don't match"
+        count() == 2, "update operations don't match"
     assert session.query(models.Operation).\
         filter(models.Operation.command == 'd').\
         count() == 1, "delete operations don't match"

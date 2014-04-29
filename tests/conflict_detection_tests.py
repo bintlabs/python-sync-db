@@ -66,9 +66,7 @@ def test_find_direct_conflicts():
         (message_ops[0],
          models.Operation(row_id=3, content_type_id=ct_b_id, command='d')), # b3
         (message_ops[1],
-         models.Operation(row_id=1, content_type_id=ct_a_id, command='u')), # a1
-        (message_ops[2],
-         models.Operation(row_id=2, content_type_id=ct_a_id, command='u'))] # a2
+         models.Operation(row_id=1, content_type_id=ct_a_id, command='u'))] # a1
     logging.info(conflicts)
     logging.info(expected)
     assert repr(conflicts) == repr(expected)

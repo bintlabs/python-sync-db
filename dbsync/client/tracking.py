@@ -39,7 +39,7 @@ def make_listener(command):
     """Builds a listener for the given command (i, u, d)."""
     def listener(mapper, connection, target):
         if not core.listening: return
-        if not core.SessionClass.object_session(target).\
+        if command == 'u' and not core.SessionClass.object_session(target).\
                 is_modified(target, include_collections=False):
             return
         session = core.Session()
