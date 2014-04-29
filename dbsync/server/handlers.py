@@ -97,8 +97,8 @@ def handle_pull(data, extra_data=None):
 
     *extra_data* Additional information to be send back to client"""
     extra = dict((k, v) for k, v in extra_data.iteritems()
-                if k not in ('operations', 'created', 'payload', 'versions')) \
-                if extra_data is not None else {}
+                 if k not in ('operations', 'created', 'payload', 'versions')) \
+                 if extra_data is not None else {}
 
     session = core.Session()
     latest_version_id = data.get('latest_version_id', None)
@@ -106,18 +106,18 @@ def handle_pull(data, extra_data=None):
         latest_version_id = int(latest_version_id)
     except (ValueError, TypeError):
         latest_version_id = None
+    swell = not 'fast_forward' in data # allows for smaller messages if False
     versions = session.query(Version)
     if latest_version_id is not None:
         versions = versions.filter(Version.version_id > latest_version_id)
     message = PullMessage(extra_data=extra)
     for v in versions:
-        message.add_version(v, session=session)
+        message.add_version(v, swell=swell, session=session)
     session.close()
     return message.to_json()
 
 
 class PushRejected(Exception): pass
-
 
 
 @core.with_listening(False)

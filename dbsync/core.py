@@ -108,7 +108,6 @@ def with_listening(enabled):
                 return result
             except:
                 toggle_listening(prev)
-                print args, kwargs
                 raise
         return wrapped
     return wrapper
@@ -191,6 +190,17 @@ def is_synched(obj):
     result = last_op is None or last_op.version_id is not None
     session.close()
     return result
+
+
+def has_unsynched_operations():
+    """
+    Whether the whole tracked database has unsynched operations or not.
+    """
+    session = Session()
+    veredict = session.query(Operation).\
+        filter(Operation.version_id == None).count() > 0
+    session.close()
+    return veredict
 
 
 def get_latest_version_id(session=None):

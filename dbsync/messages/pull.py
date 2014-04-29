@@ -86,9 +86,14 @@ class PullMessage(BaseMessage):
             encoded['extra_data'] = self.extra_data
         return encoded
 
-    def add_operation(self, op, session=None):
+    def add_operation(self, op, swell=True, session=None):
         """Adds an operation to the message, including the required
         object if it's possible to include it.
+
+        If *swell* is given and set to ``False``, the operation and
+        object will be added bare, without parent objects. Otherwise,
+        the parent objects will be added to aid in conflict
+        resolution.
 
         A delete operation doesn't include the associated object. If
         *session* is given, the procedure won't instantiate a new
@@ -113,14 +118,16 @@ class PullMessage(BaseMessage):
         # conflict resolution phase
         if obj is not None:
             self.add_object(obj)
-            # add parent objects to resolve possible conflicts in merge
-            for parent in parent_objects(obj, synched_models.values(), session):
-                self.add_object(parent)
+            if swell:
+                # add parent objects to resolve possible conflicts in merge
+                for parent in parent_objects(obj, synched_models.values(),
+                                             session):
+                    self.add_object(parent)
         if closeit:
             session.close()
         return self
 
-    def add_version(self, v, session=None):
+    def add_version(self, v, swell=True, session=None):
         """Adds a version to the message, and all associated
         operations and objects.
 
@@ -139,7 +146,7 @@ class PullMessage(BaseMessage):
         session = Session() if closeit else session
         self.versions.append(v)
         for op in v.operations:
-            self.add_operation(op, session=session)
+            self.add_operation(op, swell=swell, session=session)
         if closeit:
             session.close()
         return self

@@ -146,9 +146,11 @@ class PushMessage(BaseMessage):
         self.operations.append(op)
         if obj is not None:
             self.add_object(obj)
-            # for possible conflicts in merge
-            for parent in parent_objects(obj, synched_models.values(), session):
-                self.add_object(parent)
+            # parent objects aren't added, because the merge (and it's
+            # conflicts) ocurr solely on the pull operation
+
+            # for parent in parent_objects(obj, synched_models.values(), session):
+            #     self.add_object(parent)
         return self
 
     def add_unversioned_operations(self, session=None):

@@ -276,6 +276,7 @@ def pull(pull_url, extra_data=None,
                  if k != 'latest_version_id') \
                  if extra_data is not None else {}
     data = {'latest_version_id': core.get_latest_version_id()}
+    if not core.has_unsynched_operations(): data.update({'fast_forward': ""})
     data.update(extra)
 
     code, reason, response = get_request(

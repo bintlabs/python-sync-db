@@ -39,13 +39,9 @@ def partition(predicate, collection):
     Returns a pair of (true-tested, false-tested). Evaluating it is
     equivalent to evaluating ``(filter(predicate, collection),
     filter(lambda e: not predicate(e), collection))``"""
-    positives = []
-    negatives = []
+    positives, negatives = [], []
     for e in collection:
-        if predicate(e):
-            positives.append(e)
-        else:
-            negatives.append(e)
+        (positives if predicate(e) else negatives).append(e)
     return (positives, negatives)
 
 
@@ -53,11 +49,7 @@ def maybe(value, fn=identity, default=""):
     """``if value is None: ...`` more compressed."""
     if value is None:
         return default
-    try:
-        return fn(value)
-    except:
-        print value
-        return default
+    return fn(value)
 
 
 def guard(f):

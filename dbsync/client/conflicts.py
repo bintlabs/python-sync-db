@@ -226,7 +226,6 @@ def find_unique_conflicts(
             attr('content_type_id') == op.content_type_id,
             content_types)
         model = synched_models.get(ct.model_name, None)
-        #print model.__table__.constraints
         for c in model.__table__.constraints:
             if type(c) is UniqueConstraint:
                 # Assumes unique constraint in only one column
