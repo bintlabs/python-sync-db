@@ -11,7 +11,7 @@ from dbsync.lang import *
 from dbsync.utils import class_mapper, get_pk, query_model
 from dbsync import core
 from dbsync.models import ContentType, Operation
-from dbsync.messages.pull import PullMessage
+from dbsync.messages.pull import PullMessage, PullRequestMessage
 from dbsync.client.compression import compress, compressed_operations
 from dbsync.client.conflicts import (
     get_related_tables,
@@ -120,8 +120,9 @@ def merge(pull_message, session=None):
                         "to perform the local merge operation")
     content_types = session.query(ContentType).all()
     valid_cts = set(ct.content_type_id for ct in content_types)
+    log = lambda s, errs: core.save_log(s, None, errs)
     # preamble: detect conflicts between pulled operations and unversioned ones
-    compress()
+    # compress() # compression is performed before the merge now
     unversioned_ops = session.query(Operation).\
         filter(Operation.version_id == None).\
         order_by(Operation.order.asc()).all()
@@ -220,7 +221,8 @@ def merge(pull_message, session=None):
             local.perform(content_types,
                           core.synched_models,
                           pull_message,
-                          session)
+                          session,
+                          log)
             # delete trace of deletion
             purgelocal(local)
 
@@ -235,7 +237,8 @@ def merge(pull_message, session=None):
             pull_op.perform(content_types,
                             core.synched_models,
                             pull_message,
-                            session)
+                            session,
+                            log)
             try:
                 session.flush()
             except IntegrityError as e:
@@ -272,14 +275,13 @@ def pull(pull_url, extra_data=None,
     assert bool(pull_url), "pull url can't be empty"
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
-    extra = dict((k, v) for k, v in extra_data.iteritems()
-                 if k != 'latest_version_id') \
-                 if extra_data is not None else {}
-    data = {'latest_version_id': core.get_latest_version_id()}
-    if not core.has_unsynched_operations(): data.update({'fast_forward': ""})
-    data.update(extra)
+    request_message = PullRequestMessage()
+    compress()
+    request_message.add_unversioned_operations()
+    data = request_message.to_json()
+    data.update({'extra_data': extra_data or {}})
 
-    code, reason, response = get_request(
+    code, reason, response = post_request(
         pull_url, data, encode, decode, headers, monitor)
     if (code // 100 != 2):
         if monitor:

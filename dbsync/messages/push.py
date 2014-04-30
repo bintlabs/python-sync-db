@@ -162,7 +162,7 @@ class PushMessage(BaseMessage):
             filter(Operation.version_id == None).all()
         if any(op.content_type.model_name not in synched_models
                for op in operations):
-            session.close()
+            if closeit: session.close()
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
         for op in operations:

@@ -6,7 +6,7 @@ import dbsync
 from dbsync import client
 
 
-engine = create_engine("sqlite:///node.db")
+engine = create_engine("sqlite:///node.db", echo=True)
 
 
 dbsync.set_engine(engine)

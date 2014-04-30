@@ -14,7 +14,7 @@ from dbsync.utils import (
 from dbsync.lang import *
 
 from dbsync.core import Session, synched_models
-from dbsync.models import Operation, Version
+from dbsync.models import Operation, Version, ContentType
 from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
@@ -101,7 +101,9 @@ class PullMessage(BaseMessage):
 
         This operation might fail, (due to database inconsitency) in
         which case the internal state of the message won't be affected
-        (i.e. it won't end in an inconsistent state)."""
+        (i.e. it won't end in an inconsistent state).
+
+        DEPRECATED in favor of `fill_for`"""
         mname = op.content_type.model_name
         model = synched_models.get(mname, None)
         if model is None:
@@ -133,7 +135,9 @@ class PullMessage(BaseMessage):
 
         This method will either fail and leave the message instance as
         if nothing had happened, or it will succeed and return the
-        modified message."""
+        modified message.
+
+        DEPRECATED in favor of `fill_for`"""
         for op in v.operations:
             if op.content_type.model_name not in synched_models:
                 raise ValueError("version includes operation linked "\
@@ -147,6 +151,138 @@ class PullMessage(BaseMessage):
         self.versions.append(v)
         for op in v.operations:
             self.add_operation(op, swell=swell, session=session)
+        if closeit:
+            session.close()
+        return self
+
+    def fill_for(self, request):
+        """
+        Fills this pull message (response) with versions, operations
+        and objects, for the given request (PullRequestMessage).
+
+        Ideally, this method of filling the PullMessage will avoid
+        bloating it with parent objects when these aren't required by
+        the client node. This effectively means detecting the
+        'reversed_dependency_conflicts'
+        (:func:`client.conflicts.find_reversed_dependency_conflicts`)
+        on the server.
+        """
+        assert isinstance(request, PullRequestMessage), "invalid request"
+        session = Session()
+        cts = session.query(ContentType).all()
+        versions = session.query(Version)
+        if request.latest_version_id is not None:
+            versions = versions.\
+                filter(Version.version_id > request.latest_version_id)
+        for v in versions:
+            self.versions.append(v)
+            for op in v.operations:
+                mname = op.content_type.model_name
+                model = synched_models.get(mname, None)
+                if model is None:
+                    session.close()
+                    raise ValueError("operation linked to model %s "\
+                                         "which isn't being tracked" % mname)
+                obj = query_model(session, model).\
+                    filter_by(**{get_pk(model): op.row_id}).first() \
+                    if op.command != 'd' else None
+                self.operations.append(op)
+                if obj is None: continue
+                self.add_object(obj)
+                # add parent objects to resolve conflicts in merge
+                for parent in parent_objects(obj, synched_models.values(),
+                                             session, only_pk=True):
+                    if any(local_op.references(parent, cts, synched_models)
+                           for local_op in request.operations
+                           if local_op.command == 'd'):
+                        session.expire(parent) # load all attributes at once
+                        self.add_object(parent)
+        session.close()
+        return self
+
+
+class PullRequestMessage(BaseMessage):
+    """
+    A pull request message.
+
+    The message includes information for the server to decide whether
+    it should send back related (parent) objects to those directly
+    involved, for use in conflict resolution, or not. This is used to
+    allow for thinner PullMessage(s) to be built, through the
+    add_version and add_operation methods.
+    """
+
+    #: List of operation the node has performed since the last
+    #  synchronization. If empty, the pull is a full 'fast-forward'
+    #  thin procedure.
+    operations = None
+
+    #: The identifier used to select the operations to be included in
+    #  the pull response.
+    latest_version_id = None
+
+    def __init__(self, raw_data=None):
+        """
+        *raw_data* must be a python dictionary. If not given, the
+        message should be filled with the or
+        add_unversioned_operations method.
+        """
+        super(PullRequestMessage, self).__init__(raw_data)
+        if raw_data is not None:
+            self._build_from_raw(raw_data)
+        else:
+            self.latest_version_id = core.get_latest_version_id()
+            self.operations = []
+
+    def _build_from_raw(self, data):
+        self.operations = map(partial(object_from_dict, Operation),
+                              imap(decode_dict(Operation), data['operations']))
+        self.latest_version_id = decode(types.Integer())(
+            data['latest_version_id'])
+
+    def query(self, model):
+        """Returns a query object for this message."""
+        return MessageQuery(
+            model,
+            dict(self.payload, **{'models.Operation': self.operations}))
+
+    def to_json(self):
+        """Returns a JSON-friendly python dictionary."""
+        encoded = super(PullRequestMessage, self).to_json()
+        encoded['operations'] = map(encode_dict(Operation),
+                                    imap(properties_dict, self.operations))
+        encoded['latest_version_id'] = encode(types.Integer())(
+            self.latest_version_id)
+
+    def _add_operation(self, op):
+        """
+        Adds an operation to the message, including the required
+        object if possible.
+        """
+        assert op.version_id is None, "the operation {0} is already versioned".\
+            format(op)
+        mname = op.content_type.model_name
+        model = synched_models.get(mname, None)
+        if model is None:
+            raise ValueError("operation linked to model %s "\
+                                 "which isn't being tracked" % mname)
+        self.operations.append(op)
+        return self
+
+    def add_unversioned_operations(self, session=None):
+        """Adds all unversioned operations to this message and
+        required objects."""
+        closeit = session is None
+        session = Session() if closeit else session
+        operations = session.query(Operation).\
+            filter(Operation.version_id == None).all()
+        if any(op.content_type.model_name not in synched_models
+               for op in operations):
+            if closeit: session.close()
+            raise ValueError("version includes operation linked "\
+                                 "to model not currently being tracked")
+        for op in operations:
+            self._add_operation(op, session)
         if closeit:
             session.close()
         return self

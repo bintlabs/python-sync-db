@@ -9,7 +9,6 @@ from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, query_model
-import dbsync.core
 
 
 #: Database tables prefix.
@@ -117,7 +116,23 @@ class Operation(Base):
         return u"<Operation row_id: {0}, content_type_id: {1}, command: {2}>".\
             format(self.row_id, self.content_type_id, self.command)
 
-    def perform(operation, content_types, synched_models, container, session, node_id=None):
+    def references(self, obj, content_types, synched_models):
+        """
+        Whether this operation references the given object or not.
+
+        This procedure performs the lookups on the given
+        *content_types* and *synched_models*.
+        """
+        if self.row_id != getattr(obj, get_pk(obj), None):
+            return False
+        ct = lookup(attr('content_type_id') == self.content_type_id,
+                    content_types)
+        if ct is None:
+            return False # operation doesn't even refer to a tracked model
+        model = synched_models.get(ct.model_name, None)
+        return model is type(obj)
+
+    def perform(operation, content_types, synched_models, container, session, log):
         """Performs *operation*, looking for required data and
         metadata in *content_types*, *synched_models*, and
         *container*, and using *session* to perform it.
@@ -125,9 +140,11 @@ class Operation(Base):
         *container* is an instance of
         dbsync.messages.base.BaseMessage.
 
+        *log* is a procedure to be invoked when reporting errors.
+
         If at any moment this operation fails for predictable causes,
         it will raise an *OperationError*."""
-        ct = lookup(attr("content_type_id") == operation.content_type_id,
+        ct = lookup(attr('content_type_id') == operation.content_type_id,
                     content_types)
         if ct is None:
             raise OperationError("no content type for this operation", operation)
@@ -153,7 +170,7 @@ class Operation(Base):
                 # because nothing should be deleted without using dbsync
                 # raise OperationError(
                 #     "the referenced object doesn't exist in database", operation)
-                dbsync.core.save_log("models.update", node_id,
+                log("models.update",
                     ["the referenced object doesn't exist in database", operation])
                 pass
 
@@ -168,14 +185,13 @@ class Operation(Base):
             obj = query_model(session, model, only_pk=True).\
                 filter(getattr(model, get_pk(model)) == operation.row_id).first()
             if obj is None:
-                # The object is already delete in the server
+                # The object is already deleted in the server
                 # The final state in node and server are the same. But is an error
                 # because nothing should be deleted without using dbsync
                 # raise OperationError(
                 #     "the referenced object doesn't exist in database", "roolback", operation)
-                dbsync.core.save_log("models.delete", node_id,
+                log("models.delete",
                     ["the referenced object doesn't exist in database", operation])
-                pass
             else:
                 session.delete(obj)
 

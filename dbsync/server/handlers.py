@@ -31,7 +31,7 @@ from dbsync.models import (
     Operation)
 from dbsync.messages.base import BaseMessage
 from dbsync.messages.register import RegisterMessage
-from dbsync.messages.pull import PullMessage
+from dbsync.messages.pull import PullMessage, PullRequestMessage
 from dbsync.messages.push import PushMessage
 
 
@@ -117,6 +117,31 @@ def handle_pull(data, extra_data=None):
     return message.to_json()
 
 
+class PullRejected(Exception): pass
+
+
+def handle_pull_request(data, extra_data=None):
+    """Handle the pull request and return a dictionary object to be
+    sent back to the node.
+
+    *data* must be a dictionary-like object, usually one obtained from
+    decoding a JSON dictionary in the POST body.
+
+    *extra_data* Additional information to be send back to client"""
+    extra = dict((k, v) for k, v in extra_data.iteritems()
+                 if k not in ('operations', 'created', 'payload', 'versions')) \
+                 if extra_data is not None else {}
+
+    try:
+        request_message = PullRequestMessage(data)
+    except KeyError:
+        raise PullRejected("request object isn't a valid PullRequestMessage", data)
+
+    message = PullMessage(extra_data=extra)
+    message.fill_for(request_message)
+    return message.to_json()
+
+
 class PushRejected(Exception): pass
 
 
@@ -148,7 +173,11 @@ def handle_push(data, session=None):
     try:
         content_types = session.query(ContentType).all()
         for op in message.operations:
-            op.perform(content_types, core.synched_models, message, session, message.node_id)
+            op.perform(content_types,
+                       core.synched_models,
+                       message,
+                       session,
+                       lambda s, errs: core.save_log(s, message.node_id, errs))
     except OperationError as e:
         core.save_log('handlers.push.OperationError', 
             message.node_id, [repr(arg) for arg in e.args])

@@ -1,5 +1,6 @@
 """
-Conflict detection for the local merge operation.
+.. module:: client.conflicts
+   :synopsis: Conflict detection for the local merge operation.
 
 This module handles the conflict detection that's required for the
 local merge operation. The resolution phase is embedded in the
@@ -134,10 +135,9 @@ def find_direct_conflicts(pull_ops, unversioned_ops):
         if pull_op.content_type_id == local_op.content_type_id]
 
 
-def find_dependency_conflicts(
-        pull_ops, unversioned_ops,
-        content_types,
-        session):
+def find_dependency_conflicts(pull_ops, unversioned_ops,
+                              content_types,
+                              session):
     """Detect conflicts by relationship dependency: deletes on the
     pull message on objects that have dependent objects inserted or
     updated on the local database."""
@@ -154,11 +154,10 @@ def find_dependency_conflicts(
         if (local_op.row_id, local_op.content_type_id) in related_ids[pull_op]]
 
 
-def find_reversed_dependency_conflicts(
-        pull_ops,
-        unversioned_ops,
-        content_types,
-        pull_message):
+def find_reversed_dependency_conflicts(pull_ops,
+                                       unversioned_ops,
+                                       content_types,
+                                       pull_message):
     """Deletes on the local database on objects that are referenced by
     inserted or updated objects in the pull message."""
     related_ids = dict(

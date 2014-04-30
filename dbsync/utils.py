@@ -62,7 +62,7 @@ def get_pk(sa_variant):
     return mapper.primary_key[0].key
 
 
-def parent_objects(sa_object, models, session):
+def parent_objects(sa_object, models, session, only_pk=False):
     """Returns all the parent objects the given *sa_object* points to
     (through foreign keys in *sa_object*).
 
@@ -78,7 +78,8 @@ def parent_objects(sa_object, models, session):
                 return m
         return None
     return filter(lambda obj: obj is not None,
-                  (query_model(session, m).filter_by(**{get_pk(m): val}).first()
+                  (query_model(session, m, only_pk=only_pk).\
+                       filter_by(**{get_pk(m): val}).first()
                    for val, m in ((v, get_model(table))
                                   for v, table in references)
                    if m is not None))
