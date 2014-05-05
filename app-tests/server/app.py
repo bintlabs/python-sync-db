@@ -57,8 +57,19 @@ def register():
             {"Content-Type": "application/json"})
 
 
-@app.route("/pull", methods=["GET"])
+@app.route("/pull", methods=["GET", "POST"])
 def pull():
+    if request.method == "POST":
+        print json.dumps(request.json, indent=2)
+        try:
+            return (json.dumps(server.handle_pull_request(request.json)),
+                    200,
+                    {"Content-Type": "application/json"})
+        except server.handlers.PullRejected as e:
+            return (json.dumps({'error': [repr(arg) for arg in e.args]}),
+                    400,
+                    {"Content-Type": "application/json"})
+    print json.dumps(request.args, indent=2)
     return (json.dumps(server.handle_pull(request.args)),
             200,
             {"Content-Type": "application/json"})
@@ -66,6 +77,7 @@ def pull():
 
 @app.route("/push", methods=["POST"])
 def push():
+    print json.dumps(request.json, indent=2)
     try:
         return (json.dumps(server.handle_push(request.json)),
                 200,

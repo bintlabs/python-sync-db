@@ -9,7 +9,8 @@ from dbsync.server.tracking import track
 from dbsync.core import extend
 from dbsync.server.handlers import (
     handle_register,
-    handle_pull,
+    handle_pull, # DEPRECATED
+    handle_pull_request,
     handle_push,
     handle_repair,
     handle_query)

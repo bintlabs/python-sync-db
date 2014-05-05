@@ -15,7 +15,7 @@ from dbsync.client.register import (
 	get_node,
 	save_node)
 from dbsync.client.pull import pull
-from dbsync.client.push import push, roolback_op
+from dbsync.client.push import push
 from dbsync.client.ping import isconnected, isready
 from dbsync.client.repair import repair
 from dbsync.client.serverquery import query_server

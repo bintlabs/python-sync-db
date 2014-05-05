@@ -188,8 +188,6 @@ class Operation(Base):
                 # The object is already deleted in the server
                 # The final state in node and server are the same. But is an error
                 # because nothing should be deleted without using dbsync
-                # raise OperationError(
-                #     "the referenced object doesn't exist in database", "roolback", operation)
                 log("models.delete",
                     ["the referenced object doesn't exist in database", operation])
             else:

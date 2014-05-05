@@ -13,7 +13,7 @@ from dbsync.utils import (
     query_model)
 from dbsync.lang import *
 
-from dbsync.core import Session, synched_models
+from dbsync.core import Session, synched_models, get_latest_version_id
 from dbsync.models import Operation, Version, ContentType
 from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
@@ -231,7 +231,7 @@ class PullRequestMessage(BaseMessage):
         if raw_data is not None:
             self._build_from_raw(raw_data)
         else:
-            self.latest_version_id = core.get_latest_version_id()
+            self.latest_version_id = get_latest_version_id()
             self.operations = []
 
     def _build_from_raw(self, data):
@@ -253,6 +253,7 @@ class PullRequestMessage(BaseMessage):
                                     imap(properties_dict, self.operations))
         encoded['latest_version_id'] = encode(types.Integer())(
             self.latest_version_id)
+        return encoded
 
     def _add_operation(self, op):
         """
@@ -282,7 +283,7 @@ class PullRequestMessage(BaseMessage):
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
         for op in operations:
-            self._add_operation(op, session)
+            self._add_operation(op)
         if closeit:
             session.close()
         return self

@@ -21,7 +21,7 @@ from dbsync.client.conflicts import (
     find_reversed_dependency_conflicts,
     find_insert_conflicts,
     find_unique_conflicts)
-from dbsync.client.net import get_request
+from dbsync.client.net import post_request
 
 
 # Utilities specific to the merge
@@ -109,9 +109,7 @@ def enrich_error(error, operation, class_):
     return error
 
 
-@core.with_listening(False)
-@core.with_transaction
-def merge(pull_message, session=None):
+def merge(pull_message, session):
     """Merges a message from the server with the local database.
 
     *pull_message* is an instance of dbsync.messages.pull.PullMessage."""
@@ -122,7 +120,7 @@ def merge(pull_message, session=None):
     valid_cts = set(ct.content_type_id for ct in content_types)
     log = lambda s, errs: core.save_log(s, None, errs)
     # preamble: detect conflicts between pulled operations and unversioned ones
-    # compress() # compression is performed before the merge now
+    compress()
     unversioned_ops = session.query(Operation).\
         filter(Operation.version_id == None).\
         order_by(Operation.order.asc()).all()
@@ -253,8 +251,10 @@ class BadResponseError(Exception):
     pass
 
 
+@core.with_listening(False)
+@core.with_transaction
 def pull(pull_url, extra_data=None,
-         encode=None, decode=None, headers=None, monitor=None):
+         encode=None, decode=None, headers=None, monitor=None, session=None):
     """Attempts a pull from the server. Returns the response body.
 
     Additional data can be passed to the request by giving
@@ -275,9 +275,9 @@ def pull(pull_url, extra_data=None,
     assert bool(pull_url), "pull url can't be empty"
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
-    request_message = PullRequestMessage()
     compress()
-    request_message.add_unversioned_operations()
+    request_message = PullRequestMessage()
+    request_message.add_unversioned_operations(session)
     data = request_message.to_json()
     data.update({'extra_data': extra_data or {}})
 
@@ -308,7 +308,7 @@ def pull(pull_url, extra_data=None,
         monitor({
             'status': "merging",
             'operations': len(message.operations)})
-    merge(message)
+    merge(message, session)
     if monitor:
         monitor({'status': "done"})
     # return the response for the programmer to do what she wants

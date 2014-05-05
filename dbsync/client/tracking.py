@@ -35,6 +35,20 @@ def empty_queue(*_):
         _operations_queue.pop()
 
 
+#: table name => content_type id
+cts_cache = {}
+
+def get_ct(tname, session):
+    in_cache = cts_cache.get(tname, None)
+    if in_cache is None:
+        ct = session.query(ContentType).\
+            filter(ContentType.table_name == tname).first()
+        if ct is not None:
+            cts_cache[tname] = ct.content_type_id
+            return ct.content_type_id
+    return in_cache
+
+
 def make_listener(command):
     """Builds a listener for the given command (i, u, d)."""
     def listener(mapper, connection, target):
@@ -44,8 +58,7 @@ def make_listener(command):
             return
         session = core.Session()
         tname = mapper.mapped_table.name
-        ct = session.query(ContentType).\
-            filter(ContentType.table_name == tname).first()
+        ct = get_ct(tname, session)
         if ct is None:
             logging.error("you must register a content type for {0} "\
                               "to keep track of operations".format(tname))
@@ -54,7 +67,7 @@ def make_listener(command):
         op = Operation(
             row_id=pk,
             version_id=None, # operation not yet versioned
-            content_type_id=ct.content_type_id,
+            content_type_id=ct,
             command=command)
         _operations_queue.append(op)
         session.close()
