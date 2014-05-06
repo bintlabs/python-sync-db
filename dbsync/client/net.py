@@ -18,18 +18,22 @@ class NetworkError(Exception):
     pass
 
 
-_headers = {"Content-Type": "application/json",
-            "Accept": "application/json"}
+default_encoder = json.dumps
+
+default_decoder = json.loads
+
+default_headers = {"Content-Type": "application/json",
+                   "Accept": "application/json"}
 
 
 def _defaults(encode, decode, headers):
-    e = encode if not encode is None else json.dumps
+    e = encode if not encode is None else default_encoder
     if not inspect.isroutine(e):
         raise ValueError("encoder must be a function", e)
-    d = decode if not decode is None else json.loads
+    d = decode if not decode is None else default_decoder
     if not inspect.isroutine(d):
         raise ValueError("decoder must be a function", d)
-    h = headers if not headers is None else _headers
+    h = headers if not headers is None else default_headers
     if h and not isinstance(h, dict):
         raise ValueError("headers must be False or a python dictionary", h)
     return (e, d, h)

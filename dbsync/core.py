@@ -211,7 +211,7 @@ def save_log(source, node_id, errors):
     new_log = Log()
     new_log.source = source
     new_log.node_id = node_id
-    new_log.error = ", ".join([repr(arg) for arg in errors])
+    new_log.error = u", ".join(repr(arg) for arg in errors)
     session.add(new_log)
     session.commit()
     session.close()
