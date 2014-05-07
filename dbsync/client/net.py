@@ -10,6 +10,7 @@ These procedures will raise a NetworkError in case of network failure.
 """
 
 import requests
+import cStringIO
 import inspect
 import json
 
@@ -75,21 +76,20 @@ def post_request(server_url, json_dict,
             total = r.headers.get('content-length', None)
             partial = 0
             monitor({'status': "connect", 'size': total})
-            chunks = []
+            chunks = cStringIO.StringIO()
             for chunk in r:
                 partial += len(chunk)
                 monitor({'status': "downloading",
                          'size': total, 'received': partial})
-                chunks.append(chunk)
-            response = str(bytes().join(chunks))
-            response = response.decode(r.encoding, errors='replace') \
-                if r.encoding is not None else response
+                chunks.write(chunk)
+            response = chunks.getvalue()
+            chunks.close()
         else:
-            response = r.text
+            response = r.content
         body = None
         try:
             body = dec(response)
-        except ValueError:
+        except ValueError as e:
             pass
         result = (r.status_code, r.reason, body)
         r.close()
@@ -128,17 +128,16 @@ def get_request(server_url, data=None,
             total = r.headers.get('content-length', None)
             partial = 0
             monitor({'status': "connect", 'size': total})
-            chunks = []
+            chunks = cStringIO.StringIO()
             for chunk in r:
                 partial += len(chunk)
                 monitor({'status': "downloading",
                          'size': total, 'received': partial})
-                chunks.append(chunk)
-            response = str(bytes().join(chunks))
-            response = response.decode(r.encoding, errors='replace') \
-                if r.encoding is not None else response
+                chunks.write(chunk)
+            response = chunks.getvalue()
+            chunks.close()
         else:
-            response = r.text
+            response = r.content
         body = None
         try:
             body = dec(response)
