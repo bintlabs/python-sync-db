@@ -153,12 +153,11 @@ class Operation(Base):
             raise OperationError("no model for this operation", operation)
 
         if operation.command == 'i':
-            objs = container.query(model).\
-                filter(attr('__pk__') == operation.row_id).all()
-            if not objs:
+            obj = container.query(model).\
+                filter(attr('__pk__') == operation.row_id).first()
+            if obj is None:
                 raise OperationError(
                     "no object backing the operation in container", operation)
-            obj = objs[0]
             session.add(obj)
 
         elif operation.command == 'u':
@@ -174,12 +173,12 @@ class Operation(Base):
                     ["the referenced object doesn't exist in database", operation])
                 pass
 
-            pull_objs = container.query(model).\
-                filter(attr('__pk__') == operation.row_id).all()
-            if not pull_objs:
+            pull_obj = container.query(model).\
+                filter(attr('__pk__') == operation.row_id).first()
+            if pull_obj is None:
                 raise OperationError(
                     "no object backing the operation in container", operation)
-            session.merge(pull_objs[0])
+            session.merge(pull_obj)
 
         elif operation.command == 'd':
             obj = query_model(session, model, only_pk=True).\

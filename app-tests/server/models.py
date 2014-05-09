@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, create_engine
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.schema import UniqueConstraint
 
 import dbsync
 from dbsync import server
@@ -59,6 +60,9 @@ class House(Base):
 class Person(Base):
 
     __tablename__ = "person"
+
+    __table_args__ = (UniqueConstraint('first_name', 'last_name'),
+                      Base.__table_args__)
 
     id = Column(Integer, primary_key=True)
     first_name = Column(String)

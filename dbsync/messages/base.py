@@ -95,6 +95,12 @@ class MessageQuery(object):
         """Returns a list of all queried objects."""
         return list(self)
 
+    def first(self):
+        """Returns the first of the queried objects, or ``None`` if no
+        objects matched."""
+        try: return next(iter(self))
+        except StopIteration: return None
+
 
 class BaseMessage(object):
     """The base type for messages with a payload."""

@@ -89,7 +89,7 @@ def post_request(server_url, json_dict,
         body = None
         try:
             body = dec(response)
-        except ValueError as e:
+        except ValueError:
             pass
         result = (r.status_code, r.reason, body)
         r.close()

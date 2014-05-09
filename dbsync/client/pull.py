@@ -109,6 +109,9 @@ def enrich_error(error, operation, class_):
     return error
 
 
+class UniqueConstraintError(Exception): pass
+
+
 def merge(pull_message, session):
     """Merges a message from the server with the local database.
 
@@ -119,7 +122,7 @@ def merge(pull_message, session):
     content_types = session.query(ContentType).all()
     valid_cts = set(ct.content_type_id for ct in content_types)
     log = lambda s, errs: core.save_log(s, None, errs)
-    # preamble: detect conflicts between pulled operations and unversioned ones
+
     compress()
     unversioned_ops = session.query(Operation).\
         filter(Operation.version_id == None).\
@@ -128,6 +131,22 @@ def merge(pull_message, session):
                       pull_message.operations)
     pull_ops = compressed_operations(pull_ops)
 
+    # I) first phase: resolve unique constraint conflicts if
+    # possible. Abort early if a human error is detected
+    unique_conflicts = find_unique_conflicts(
+        pull_ops, unversioned_ops, content_types, pull_message, session)
+
+    for uc in unique_conflicts:
+        obj = uc['object']
+        columns = uc['columns']
+        if uc['type'] == "lib":
+            for key, value in izip(columns, uc['new_values']):
+                setattr(obj, key, value)
+        elif uc['type'] == "human":
+            raise UniqueConstraintError(obj, columns)
+
+    # II) second phase: detect conflicts between pulled operations and
+    # unversioned ones
     direct_conflicts = find_direct_conflicts(pull_ops, unversioned_ops)
 
     # in which the delete operation is registered on the pull message
@@ -140,13 +159,8 @@ def merge(pull_message, session):
 
     insert_conflicts = find_insert_conflicts(pull_ops, unversioned_ops)
 
-    # Unique constraint conflicts
-    unique_conflicts = find_unique_conflicts(
-        pull_ops, unversioned_ops, pull_message, content_types, session)
-
-    # merge transaction
-    # first phase: perform pull operations, when allowed and while
-    # resolving conflicts
+    # III) third phase: perform pull operations, when allowed and
+    # while resolving conflicts
     def extract(op, conflicts):
         return [local for remote, local in conflicts if remote is op]
 
@@ -158,19 +172,6 @@ def merge(pull_message, session):
         mfilter(exclude, reversed_dependency_conflicts)
         mfilter(exclude, insert_conflicts)
         unversioned_ops.remove(local)
-
-    def repair_lib_unique_error(obj, column, new_value, session):
-        """Allows to changes prematurely
-        the unique value of conflictive object"""
-        setattr(obj, column, new_value)
-        session.add(obj)
-
-    for uc in unique_conflicts:
-        if uc['type'] == 'lib':
-            obj = uc['op'][0]
-            column = uc['op'][1]
-            value = uc['op'][2]
-            repair_lib_unique_error(obj, column, value, session)
 
     for pull_op in pull_ops:
         # flag to control whether the remote operation is free of obstacles
@@ -242,7 +243,7 @@ def merge(pull_message, session):
             except IntegrityError as e:
                 raise enrich_error(e, pull_op, class_)
 
-    # second phase: insert versions from the pull_message
+    # IV) fourth phase: insert versions from the pull_message
     for pull_version in pull_message.versions:
         session.add(pull_version)
 
