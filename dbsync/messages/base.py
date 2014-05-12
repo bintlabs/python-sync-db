@@ -137,17 +137,18 @@ class BaseMessage(object):
                                             imap(method('to_dict'), objects))
         return encoded
 
-    def add_object(self, obj):
+    def add_object(self, obj, include_extensions=True):
         """Adds an object to the message, if it's not already in."""
-        class_ = obj.__class__
+        class_ = type(obj)
         classname = class_.__name__
         obj_set = self.payload.get(classname, set())
         if ObjectType(classname, getattr(obj, get_pk(class_))) in obj_set:
             return self
         properties = properties_dict(obj)
-        for field, ext in model_extensions.get(classname, {}).iteritems():
-            _, loadfn, _ = ext
-            properties[field] = loadfn(obj)
+        if include_extensions:
+            for field, ext in model_extensions.get(classname, {}).iteritems():
+                _, loadfn, _ = ext
+                properties[field] = loadfn(obj)
         obj_set.add(ObjectType(
                 classname, getattr(obj, get_pk(class_)), **properties))
         self.payload[classname] = obj_set

@@ -8,7 +8,7 @@ import inspect
 from sqlalchemy.orm import sessionmaker
 
 from dbsync.lang import *
-from dbsync.utils import get_pk
+from dbsync.utils import get_pk, AlwaysEmptyList
 from dbsync.models import ContentType, Operation, Version, Log
 
 
@@ -81,6 +81,17 @@ def extend(model, fieldname, fieldtype, loadfn, savefn):
     model_extensions[model.__name__] = extensions
 
 
+def save_extensions(obj):
+    """
+    Executes the save procedures for the extensions of the given
+    object.
+    """
+    extensions = model_extensions.get(type(obj).__name__, {})
+    for field, ext in extensions.iteritems():
+        _, _, savefn = ext
+        savefn(obj, getattr(obj, field, None))
+
+
 #: Toggled variable used to disable listening to operations momentarily.
 listening = True
 
@@ -113,43 +124,40 @@ def with_listening(enabled):
     return wrapper
 
 
-def with_transaction(proc):
+def with_transaction(include_extensions=True):
     """Decorator for a procedure that uses a session and acts as an
     atomic transaction. It feeds a new session to the procedure, and
     commits it, rolls it back, and / or closes it when it's
-    appropriate."""
-    @wraps(proc)
-    def wrapped(*args, **kwargs):
-        session = Session()
-        engine = get_engine()
-        # For now only works with sqlite
-        if engine.dialect.name == 'sqlite':
-            session.execute('BEGIN EXCLUSIVE TRANSACTION;')
-            session.execute('pragma foreign_keys=OFF;')
-        added = []
-        track_added = lambda fn: lambda o, **kws: begin(added.append(o),
-                                                        fn(o, **kws))
-        session.add = track_added(session.add)
-        session.merge = track_added(session.merge)
-        result = None
-        try:
-            kwargs.update({'session': session})
-            result = proc(*args, **kwargs)
-            session.commit()
-            #session.execute('END TRANSACTION;')
-            session.close()
-        except:
-            session.rollback()
-            #session.execute('END TRANSACTION;')
-            session.close()
-            raise
-        for obj in added:
-            extensions = model_extensions.get(obj.__class__.__name__, {})
-            for field, ext in extensions.iteritems():
-                _, _, savefn = ext
-                savefn(obj, getattr(obj, field, None))
-        return result
-    return wrapped
+    appropriate. If *include_extensions* is ``False``, the transaction
+    will ignore model extensions."""
+    def wrapper(proc):
+        @wraps(proc)
+        def wrapped(*args, **kwargs):
+            session = Session()
+            engine = get_engine()
+            # For now only works with sqlite
+            if engine.dialect.name == 'sqlite':
+                session.execute('BEGIN EXCLUSIVE TRANSACTION;')
+                session.execute('pragma foreign_keys=OFF;')
+            added = [] if include_extensions else AlwaysEmptyList()
+            track_added = lambda fn: lambda o, **kws: begin(added.append(o),
+                                                            fn(o, **kws))
+            session.add = track_added(session.add)
+            session.merge = track_added(session.merge)
+            result = None
+            try:
+                kwargs.update({'session': session})
+                result = proc(*args, **kwargs)
+                session.commit()
+                session.close()
+            except:
+                session.rollback()
+                session.close()
+                raise
+            for obj in added: save_extensions(obj)
+            return result
+        return wrapped
+    return wrapper
 
 
 def generate_content_types():

@@ -21,8 +21,6 @@ from dbsync.messages.base import BaseMessage
 from dbsync.client.net import get_request
 
 
-@core.with_listening(False)
-@core.with_transaction
 def repair_database(message, latest_version_id, session=None):
     if not isinstance(message, BaseMessage):
         raise TypeError("need an instance of dbsync.messages.base.BaseMessage "\
@@ -46,9 +44,12 @@ def repair_database(message, latest_version_id, session=None):
 class BadResponseError(Exception): pass
 
 
-def repair(repair_url, extra_data=None,
+def repair(repair_url, include_extensions=True, extra_data=None,
            encode=None, decode=None, headers=None, monitor=None):
     """Fetches the server database and replaces the local one with it.
+
+    *include_extensions* includes or excludes extension fields from
+    the operation.
 
     *extra_data* can be used to add user credentials.
 
@@ -59,7 +60,9 @@ def repair(repair_url, extra_data=None,
     assert bool(repair_url), "repair url can't be empty"
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
-    data = extra_data if extra_data is not None else {}
+        assert 'exclude_extensions' not in extra_data, "reserved request key"
+    data = {'exclude_extensions': ""} if not include_extensions else {}
+    data.update(extra_data or {})
 
     code, reason, response = get_request(
         repair_url, data, encode, decode, headers, monitor)
@@ -81,6 +84,8 @@ def repair(repair_url, extra_data=None,
             "response object isn't a valid BaseMessage", response)
 
     if monitor: monitor({'status': "repairing"})
-    repair_database(message, response.get("latest_version_id", None))
+    core.with_listening(False)(
+        core.with_transaction(include_extensions=include_extensions)(
+            repair_database))(message, response.get("latest_version_id", None))
     if monitor: monitor({'status': "done"})
     return response

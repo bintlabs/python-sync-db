@@ -45,7 +45,7 @@ def ping():
 
 @app.route("/repair", methods=["GET"])
 def repair():
-    return (json.dumps(server.handle_repair()),
+    return (json.dumps(server.handle_repair(request.args)),
             200,
             {"Content-Type": "application/json"})
 

@@ -151,7 +151,7 @@ def unsynched_objects():
     return triads
 
 
-@core.with_transaction
+@core.with_transaction()
 def trim(session=None):
     """Trims the internal synchronization tables, to free space."""
     last_id = core.get_latest_version_id(session=session)

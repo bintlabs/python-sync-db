@@ -15,7 +15,7 @@ from dbsync.client.net import post_request
 class PushRejected(Exception): pass
 
 
-@core.with_transaction
+@core.with_transaction()
 def push(push_url, extra_data=None,
          encode=None, decode=None, headers=None, session=None):
     """Attempts a push to the server. Returns the response body.

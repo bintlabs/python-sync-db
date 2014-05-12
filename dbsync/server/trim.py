@@ -7,7 +7,7 @@ from dbsync import core
 from dbsync.models import Node, Version, Operation
 
 
-@core.with_transaction
+@core.with_transaction()
 def trim(session=None):
     """Clears space by deleting operations and versions that are no
     longer needed.

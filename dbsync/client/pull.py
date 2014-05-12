@@ -2,8 +2,6 @@
 Pull, merge and related operations.
 """
 
-import re
-
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
@@ -71,42 +69,6 @@ def update_local_id(old_id, new_id, ct, content_types, session):
             for obj in query_model(session, model).filter_by(**{fk: old_id}):
                 setattr(obj, fk, new_id)
     session.flush()  # raise integrity errors now
-
-
-# TODO make enrich_error better at detecting columns and values
-# This is frail but I can't think of another way
-integrity_error_match = re.compile("^column\s(\w+)\sis\snot\sunique$").match
-
-
-def enrich_error(error, operation, class_):
-    """Fill the error with additional information, such as the class
-    linked to the operation that triggered it, and the primary key of
-    the object."""
-    error.conflicting_class = class_
-    error.conflicting_pk = operation.row_id
-    error.conflicting_column = None
-    if hasattr(error, 'orig'):
-        orig = error.orig
-        if hasattr(orig, 'message'):
-            matches = integrity_error_match(orig.message)
-            if matches:
-                error.conflicting_column = matches.group(1)
-    error.conflicting_value = None
-    if error.conflicting_column is not None and \
-            hasattr(error, 'statement') and \
-            hasattr(error, 'params'):
-        statement = error.statement
-        col_tuple = "".join(takewhile(
-                            lambda c: c != ")",
-                            dropwhile(lambda c: c != "(", statement)))
-        col_index = -1
-        try:
-            col_index = map(lambda s: s.strip(), col_tuple[1:].split(",")).\
-                index(error.conflicting_column)
-            error.conflicting_value = error.params[col_index]
-        except ValueError:
-            pass
-    return error
 
 
 class UniqueConstraintError(Exception): pass
@@ -238,10 +200,8 @@ def merge(pull_message, session):
                             pull_message,
                             session,
                             log)
-            try:
-                session.flush()
-            except IntegrityError as e:
-                raise enrich_error(e, pull_op, class_)
+
+            session.flush()
 
     # IV) fourth phase: insert versions from the pull_message
     for pull_version in pull_message.versions:
@@ -253,7 +213,7 @@ class BadResponseError(Exception):
 
 
 @core.with_listening(False)
-@core.with_transaction
+@core.with_transaction()
 def pull(pull_url, extra_data=None,
          encode=None, decode=None, headers=None, monitor=None, session=None):
     """Attempts a pull from the server. Returns the response body.

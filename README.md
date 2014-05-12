@@ -231,7 +231,7 @@ Then, listen to five distinct URLs:
 
 - One for the `repair` procedure, listening GETs.
 - One for the `register` procedure, listening POSTs.
-- One for the `pull` procedure, listening GETs.
+- One for the `pull` procedure, listening POSTs.
 - One for the `push` procedure, listening POSTs.
 - One (optional) for the `query` procedure (for remote queries),
   listening GETs.
@@ -250,7 +250,7 @@ app = Flask(__name__)
 
 @app.route("/repair", methods=["GET"])
 def repair():
-    return (json.dumps(server.handle_repair()),
+    return (json.dumps(server.handle_repair(request.args)),
             200,
             {"Content-Type": "application/json"})
 
@@ -262,9 +262,9 @@ def register():
             {"Content-Type": "application/json"})
 
 
-@app.route("/pull", methods=["GET"])
+@app.route("/pull", methods=["POST"])
 def pull():
-    return (json.dumps(server.handle_pull(request.args)),
+    return (json.dumps(server.handle_pull_request(request.json)),
             200,
             {"Content-Type": "application/json"})
 

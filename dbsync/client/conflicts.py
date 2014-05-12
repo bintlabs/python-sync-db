@@ -221,7 +221,7 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                                     to update the conflicting object
     """
 
-    def verify_constraint(model, columns, values, session):
+    def verify_constraint(model, columns, values):
         """
         Checks to see whether some local object exists with
         conflicting values.
@@ -233,12 +233,12 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
         pk = get_pk(model)
         return match, getattr(match, pk, None)
 
-    def get_remote_values(model, row_id, columns, container):
+    def get_remote_values(model, row_id, columns):
         """
         Gets the conflicting values out of the remote object set
         (*container*).
         """
-        obj = container.query(model).filter(attr('__pk__') == row_id).first()
+        obj = pull_message.query(model).filter(attr('__pk__') == row_id).first()
         if obj is not None:
             return tuple(getattr(obj, column) for column in columns)
         return None
@@ -260,11 +260,10 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
 
             unique_columns = tuple(col.name for col in constraint.columns)
             # Unique values on the server, to check conflicts with local database
-            remote_values = get_remote_values(
-                model, op.row_id, unique_columns, pull_message)
+            remote_values = get_remote_values(model, op.row_id, unique_columns)
 
             obj_conflict, pk_conflict = verify_constraint(
-                model, unique_columns, remote_values, session)
+                model, unique_columns, remote_values)
 
             is_unversioned = pk_conflict in unversioned_pks.get(
                 ct.content_type_id, set())

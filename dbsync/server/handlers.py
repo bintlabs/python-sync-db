@@ -55,14 +55,15 @@ def handle_query(data):
     return message.to_json()
 
 
-def handle_repair():
+def handle_repair(data=None):
     """Handle repair request. Return whole server database."""
+    include_extensions = 'exclude_extensions' not in (data or {})
     session = core.Session()
     latest_version_id = core.get_latest_version_id(session)
     message = BaseMessage()
     for model in core.synched_models.itervalues():
         for obj in query_model(session, model):
-            message.add_object(obj)
+            message.add_object(obj, include_extensions=include_extensions)
     response = message.to_json()
     response['latest_version_id'] = latest_version_id
     session.close()
@@ -70,7 +71,7 @@ def handle_repair():
 
 
 @core.with_listening(False)
-@core.with_transaction
+@core.with_transaction()
 def handle_register(user_id=None, session=None):
     """Handle a registry request, creating a new node, wrapping it in
     a message and returning it to the client node.
@@ -95,7 +96,9 @@ def handle_pull(data, extra_data=None):
     *data* must be a dictionary-like object, usually one containing
     the GET parameters of the request.
 
-    *extra_data* Additional information to be send back to client"""
+    *extra_data* Additional information to be send back to client
+
+    DEPRECATED in favor of handle_pull_request"""
     extra = dict((k, v) for k, v in extra_data.iteritems()
                  if k not in ('operations', 'created', 'payload', 'versions')) \
                  if extra_data is not None else {}
@@ -146,7 +149,7 @@ class PushRejected(Exception): pass
 
 
 @core.with_listening(False)
-@core.with_transaction
+@core.with_transaction()
 def handle_push(data, session=None):
     """Handle the push request and return a dictionary object to be
     sent back to the node.
