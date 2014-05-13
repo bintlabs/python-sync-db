@@ -94,7 +94,11 @@ def save_extensions(obj):
     extensions = model_extensions.get(type(obj).__name__, {})
     for field, ext in extensions.iteritems():
         _, _, savefn = ext
-        savefn(obj, getattr(obj, field, None))
+        # Prevent infine push loops from nodes. Ugly, but works for now!!!!!
+        try:
+            savefn(obj, getattr(obj, field, None))
+        except:
+            pass
 
 
 #: Toggled variable used to disable listening to operations momentarily.
