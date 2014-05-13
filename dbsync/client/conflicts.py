@@ -19,7 +19,7 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.schema import UniqueConstraint
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, class_mapper, query_model
+from dbsync.utils import get_pk, class_mapper, query_model, column_properties
 from dbsync.core import synched_models, save_log
 from dbsync.models import Operation, ContentType
 
@@ -210,15 +210,20 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                           pull_message,
                           session):
     """
-    Unique constraints violated in a model. Returns a list of
-    dictionaries with the required information to handle the
-    conflict::
+    Unique constraints violated in a model. Returns two lists of
+    dictionaries, the first one with the solvable conflicts, and the
+    second one with the proper errors. Each conflict is a dictionary
+    with the following fields::
 
         object: the local conflicting object, bound to the session
-        type: defines the type of violation, human error or dbsync error
         columns: tuple of column names in the unique constraint
-        new_values (if type "lib"): tuple of values that can be used
-                                    to update the conflicting object
+        new_values: tuple of values that can be used to update the
+                    conflicting object
+
+    Each error is a dictionary with the following fields::
+
+        object: the local conflicting object, bound to the session
+        columns: tuple of column names in the unique constraint
     """
 
     def verify_constraint(model, columns, values):
@@ -241,15 +246,16 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
         obj = pull_message.query(model).filter(attr('__pk__') == row_id).first()
         if obj is not None:
             return tuple(getattr(obj, column) for column in columns)
-        return None
+        return (None,)
 
     # keyed to content type
     unversioned_pks = dict((ct_id, set(op.row_id for op in unversioned_ops
-                                       if op.content_type_id == ct_id))
+                                       if op.content_type_id == ct_id
+                                       if op.command != 'd'))
                            for ct_id in set(operation.content_type_id
                                             for operation in unversioned_ops))
-    # the list to fill with conflicts
-    conflicts = []
+    # the lists to fill with conflicts and errors
+    conflicts, errors = [], []
 
     for op in pull_ops:
         ct = lookup(attr('content_type_id') == op.content_type_id, content_types)
@@ -290,11 +296,11 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                 if old_values != new_values:
                     # Library error
                     # It's necesary to first update the unique value
+                    session.refresh(obj_conflict, column_properties(obj_conflict))
                     conflicts.append(
                         {'object': obj_conflict,
                          'columns': unique_columns,
-                         'new_values': new_values,
-                         'type': "lib"})
+                         'new_values': new_values})
                 else:
                     # The server allows two identical unique values
                     # This should be impossible
@@ -302,10 +308,9 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
             elif remote_obj is not None and is_unversioned:
                 # Two nodes created objects with the same unique
                 # values and pk. Human error.
-                conflicts.append(
+                errors.append(
                     {'object': obj_conflict,
-                     'columns': unique_columns,
-                     'type': "human"})
+                     'columns': unique_columns})
             else:
                 # The conflicting object hasn't been modified on the
                 # server, which must mean the server violated the
@@ -317,4 +322,4 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                           "violation on the server",
                           unique_columns,
                           op])
-    return conflicts
+    return conflicts, errors

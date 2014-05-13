@@ -16,11 +16,14 @@ tasked to send the HTTP response).
 
 import datetime
 
+from sqlalchemy.orm import make_transient
+
 from dbsync.lang import *
 from dbsync.utils import (
     generate_secret,
     properties_dict,
     column_properties,
+    get_pk,
     query_model)
 from dbsync import core
 from dbsync.models import (
@@ -33,10 +36,11 @@ from dbsync.messages.base import BaseMessage
 from dbsync.messages.register import RegisterMessage
 from dbsync.messages.pull import PullMessage, PullRequestMessage
 from dbsync.messages.push import PushMessage
+from dbsync.server.conflicts import find_unique_conflicts
 
 
 def handle_query(data):
-    """Responds to a query request."""
+    "Responds to a query request."
     model = core.synched_models.get(data.get('model', None), None)
     if model is None: return None
     mname = model.__name__
@@ -56,7 +60,7 @@ def handle_query(data):
 
 
 def handle_repair(data=None):
-    """Handle repair request. Return whole server database."""
+    "Handle repair request. Return whole server database."
     include_extensions = 'exclude_extensions' not in (data or {})
     session = core.Session()
     latest_version_id = core.get_latest_version_id(session)
@@ -73,11 +77,13 @@ def handle_repair(data=None):
 @core.with_listening(False)
 @core.with_transaction()
 def handle_register(user_id=None, session=None):
-    """Handle a registry request, creating a new node, wrapping it in
-    a message and returning it to the client node.
+    """
+    Handle a registry request, creating a new node, wrapping it in a
+    message and returning it to the client node.
 
     *user_id* can be a numeric key to a user record, which will be set
-    in the node record itself."""
+    in the node record itself.
+    """
     newnode = Node()
     newnode.registered = datetime.datetime.now()
     newnode.registry_user_id = user_id
@@ -90,15 +96,17 @@ def handle_register(user_id=None, session=None):
 
 
 def handle_pull(data, extra_data=None):
-    """Handle the pull request and return a dictionary object to be
-    sent back to the node.
+    """
+    Handle the pull request and return a dictionary object to be sent
+    back to the node.
 
     *data* must be a dictionary-like object, usually one containing
     the GET parameters of the request.
 
     *extra_data* Additional information to be send back to client
 
-    DEPRECATED in favor of handle_pull_request"""
+    DEPRECATED in favor of handle_pull_request
+    """
     extra = dict((k, v) for k, v in extra_data.iteritems()
                  if k not in ('operations', 'created', 'payload', 'versions')) \
                  if extra_data is not None else {}
@@ -124,13 +132,15 @@ class PullRejected(Exception): pass
 
 
 def handle_pull_request(data, extra_data=None):
-    """Handle the pull request and return a dictionary object to be
-    sent back to the node.
+    """
+    Handle the pull request and return a dictionary object to be sent
+    back to the node.
 
     *data* must be a dictionary-like object, usually one obtained from
     decoding a JSON dictionary in the POST body.
 
-    *extra_data* Additional information to be send back to client"""
+    *extra_data* Additional information to be send back to client
+    """
     extra = dict((k, v) for k, v in extra_data.iteritems()
                  if k not in ('operations', 'created', 'payload', 'versions')) \
                  if extra_data is not None else {}
@@ -151,14 +161,16 @@ class PushRejected(Exception): pass
 @core.with_listening(False)
 @core.with_transaction()
 def handle_push(data, session=None):
-    """Handle the push request and return a dictionary object to be
-    sent back to the node.
+    """
+    Handle the push request and return a dictionary object to be sent
+    back to the node.
 
     If the push is rejected, this procedure will raise a
     dbsync.server.handlers.PushRejected exception.
 
     *data* must be a dictionary-like object, usually the product of
-    parsing a JSON string."""
+    parsing a JSON string.
+    """
     message = None
     try:
         message = PushMessage(data)
@@ -172,9 +184,29 @@ def handle_push(data, session=None):
         raise PushRejected("message doesn't contain operations")
     if not message.islegit(session):
         raise PushRejected("message isn't properly signed")
-    # perform the operations
+
+    content_types = session.query(ContentType).all()
+
+    # I) detect unique constraint conflicts and resolve them if possible
+    unique_conflicts = find_unique_conflicts(message, content_types, session)
+    conflicting_objects = set()
+    for uc in unique_conflicts:
+        obj = uc['object']
+        conflicting_objects.add(obj)
+        for key, value in izip(uc['columns'], uc['new_values']):
+            setattr(obj, key, value)
+    for obj in conflicting_objects:
+        make_transient(obj) # remove from session
+    for model in set(type(obj) for obj in conflicting_objects):
+        pk_name = get_pk(model)
+        pks = [getattr(obj, pk_name) for obj in conflicting_objects]
+        session.query(model).filter(getattr(model, pk_name).in_(pks)).\
+            delete(synchronize_session='fetch') # remove from the database
+    session.add_all(conflicting_objects) # reinsert
+    session.flush()
+
+    # II) perform the operations
     try:
-        content_types = session.query(ContentType).all()
         for op in message.operations:
             op.perform(content_types,
                        core.synched_models,
@@ -186,10 +218,11 @@ def handle_push(data, session=None):
             message.node_id, [repr(arg) for arg in e.args])
         raise PushRejected("at least one operation couldn't be performed",
                            *e.args)
-    # insert a new version
+    # III) insert a new version
     version = Version(created=datetime.datetime.now(), node_id=message.node_id)
     session.add(version)
-    # insert the operations, discarding the 'order' column
+
+    # IV) insert the operations, discarding the 'order' column
     for op in sorted(message.operations, key=attr('order')):
         new_op = Operation()
         for k in ifilter(lambda k: k != 'order', properties_dict(op)):
@@ -197,5 +230,6 @@ def handle_push(data, session=None):
         session.add(new_op)
         new_op.version = version
         session.flush()
+
     # return the new version id back to the node
     return {'new_version_id': version.version_id}

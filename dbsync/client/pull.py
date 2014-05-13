@@ -3,7 +3,7 @@ Pull, merge and related operations.
 """
 
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import make_transient
 
 from dbsync.lang import *
 from dbsync.utils import class_mapper, get_pk, query_model
@@ -95,17 +95,28 @@ def merge(pull_message, session):
 
     # I) first phase: resolve unique constraint conflicts if
     # possible. Abort early if a human error is detected
-    unique_conflicts = find_unique_conflicts(
+    unique_conflicts, unique_errors = find_unique_conflicts(
         pull_ops, unversioned_ops, content_types, pull_message, session)
 
+    if unique_errors:
+        raise UniqueConstraintError(unique_errors)
+
+    conflicting_objects = set()
     for uc in unique_conflicts:
         obj = uc['object']
-        columns = uc['columns']
-        if uc['type'] == "lib":
-            for key, value in izip(columns, uc['new_values']):
-                setattr(obj, key, value)
-        elif uc['type'] == "human":
-            raise UniqueConstraintError(obj, columns)
+        conflicting_objects.add(obj)
+        for key, value in izip(uc['columns'], uc['new_values']):
+            setattr(obj, key, value)
+    # Resolve potential cyclical conflicts by deleting and reinserting
+    for obj in conflicting_objects:
+        make_transient(obj) # remove from session
+    for model in set(type(obj) for obj in conflicting_objects):
+        pk_name = get_pk(model)
+        pks = [getattr(obj, pk_name) for obj in conflicting_objects]
+        session.query(model).filter(getattr(model, pk_name).in_(pks)).\
+            delete(synchronize_session='fetch') # remove from the database
+    session.add_all(conflicting_objects) # reinsert them
+    session.flush()
 
     # II) second phase: detect conflicts between pulled operations and
     # unversioned ones

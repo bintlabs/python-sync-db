@@ -6,10 +6,12 @@ import zlib
 import inspect
 
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, AlwaysEmptyList
 from dbsync.models import ContentType, Operation, Version, Log
+from dbsync import dialects
 
 
 SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
@@ -24,9 +26,12 @@ _engine = None
 
 
 def set_engine(engine):
-    """Sets the SA engine to be used by the library.
+    """
+    Sets the SA engine to be used by the library.
 
-    It should point to the same database as the application's."""
+    It should point to the same database as the application's.
+    """
+    assert isinstance(engine, Engine), "expected sqlalchemy.engine.Engine object"
     global _engine
     _engine = engine
 
@@ -34,7 +39,7 @@ def set_engine(engine):
 class ConfigurationError(Exception): pass
 
 def get_engine():
-    """Returns a defined (not None) engine."""
+    "Returns a defined (not None) engine."
     if _engine is None:
         raise ConfigurationError("database engine hasn't been set yet")
     return _engine
@@ -97,17 +102,21 @@ listening = True
 
 
 def toggle_listening(enabled=None):
-    """Change the listening state.
+    """
+    Change the listening state.
 
     If set to ``False``, no operations will be registered. This is
-    used in the conflict resolution phase."""
+    used in the conflict resolution phase.
+    """
     global listening
     listening = enabled if enabled is not None else not listening
 
 
 def with_listening(enabled):
-    """Decorator for procedures to be executed with the specified
-    listening status."""
+    """
+    Decorator for procedures to be executed with the specified
+    listening status.
+    """
     def wrapper(proc):
         @wraps(proc)
         def wrapped(*args, **kwargs):
@@ -125,20 +134,18 @@ def with_listening(enabled):
 
 
 def with_transaction(include_extensions=True):
-    """Decorator for a procedure that uses a session and acts as an
+    """
+    Decorator for a procedure that uses a session and acts as an
     atomic transaction. It feeds a new session to the procedure, and
     commits it, rolls it back, and / or closes it when it's
     appropriate. If *include_extensions* is ``False``, the transaction
-    will ignore model extensions."""
+    will ignore model extensions.
+    """
     def wrapper(proc):
         @wraps(proc)
         def wrapped(*args, **kwargs):
             session = Session()
-            engine = get_engine()
-            # For now only works with sqlite
-            if engine.dialect.name == 'sqlite':
-                session.execute('BEGIN EXCLUSIVE TRANSACTION;')
-                session.execute('pragma foreign_keys=OFF;')
+            previous_state = dialects.begin_transaction(session)
             added = [] if include_extensions else AlwaysEmptyList()
             track_added = lambda fn: lambda o, **kws: begin(added.append(o),
                                                             fn(o, **kws))
@@ -149,9 +156,11 @@ def with_transaction(include_extensions=True):
                 kwargs.update({'session': session})
                 result = proc(*args, **kwargs)
                 session.commit()
+                dialects.end_transaction(previous_state, session)
                 session.close()
             except:
                 session.rollback()
+                dialects.end_transaction(previous_state, session)
                 session.close()
                 raise
             for obj in added: save_extensions(obj)
@@ -161,10 +170,12 @@ def with_transaction(include_extensions=True):
 
 
 def generate_content_types():
-    """Fills the content type table.
+    """
+    Fills the content type table.
 
     Inserts content types into the internal table used to describe
-    operations."""
+    operations.
+    """
     session = Session()
     for mname, model in synched_models.iteritems():
         tname = model.__table__.name
@@ -180,10 +191,12 @@ def generate_content_types():
 
 
 def is_synched(obj):
-    """Returns whether the given tracked object is synched.
+    """
+    Returns whether the given tracked object is synched.
 
     Raises a TypeError if the given object is not being tracked
-    (i.e. the content type doesn't exist)."""
+    (i.e. the content type doesn't exist).
+    """
     session = Session()
     ct = session.query(ContentType).\
         filter(ContentType.model_name == obj.__class__.__name__).first()
@@ -201,8 +214,10 @@ def is_synched(obj):
 
 
 def get_latest_version_id(session=None):
-    """Returns the latest version identifier or ``None`` if no version
-    is found."""
+    """
+    Returns the latest version identifier or ``None`` if no version is
+    found.
+    """
     closeit = session is None
     session = Session() if closeit else session
     # assuming version identifiers grow monotonically
@@ -214,7 +229,7 @@ def get_latest_version_id(session=None):
 
 
 def save_log(source, node_id, errors):
-    """Insert record in Log table"""
+    "Insert record in Log table"
     session = Session()
     new_log = Log()
     new_log.source = source

@@ -31,7 +31,7 @@ def root():
     return 'Ping: any method <a href="/ping">/ping</a><br />'\
         'Repair: GET <a href="/repair">/repair</a><br />'\
         'Register: POST /register<br />'\
-        'Pull: GET <a href="/pull">/pull</a><br />'\
+        'Pull: POST /pull<br />'\
         'Push: POST /push<br />'\
         'Query: GET <a href="/query">/query</a><br />'\
         'Inspect: GET <a href="/inspect">/inspect</a><br />'\
@@ -57,22 +57,17 @@ def register():
             {"Content-Type": "application/json"})
 
 
-@app.route("/pull", methods=["GET", "POST"])
+@app.route("/pull", methods=["POST"])
 def pull():
-    if request.method == "POST":
-        print json.dumps(request.json, indent=2)
-        try:
-            return (json.dumps(server.handle_pull_request(request.json)),
-                    200,
-                    {"Content-Type": "application/json"})
-        except server.handlers.PullRejected as e:
-            return (json.dumps({'error': [repr(arg) for arg in e.args]}),
-                    400,
-                    {"Content-Type": "application/json"})
-    print json.dumps(request.args, indent=2)
-    return (json.dumps(server.handle_pull(request.args)),
-            200,
-            {"Content-Type": "application/json"})
+    print json.dumps(request.json, indent=2)
+    try:
+        return (json.dumps(server.handle_pull_request(request.json)),
+                200,
+                {"Content-Type": "application/json"})
+    except server.handlers.PullRejected as e:
+        return (json.dumps({'error': [repr(arg) for arg in e.args]}),
+                400,
+                {"Content-Type": "application/json"})
 
 
 @app.route("/push", methods=["POST"])
