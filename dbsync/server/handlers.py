@@ -107,7 +107,7 @@ def handle_pull(data, extra_data=None):
     *data* must be a dictionary-like object, usually one containing
     the GET parameters of the request.
 
-    *extra_data* Additional information to be send back to client
+    *extra_data* Additional information to be sent back to client
 
     DEPRECATED in favor of handle_pull_request
     """
@@ -143,7 +143,7 @@ def handle_pull_request(data, extra_data=None):
     *data* must be a dictionary-like object, usually one obtained from
     decoding a JSON dictionary in the POST body.
 
-    *extra_data* Additional information to be send back to client
+    *extra_data* Additional information to be sent back to client
     """
     extra = dict((k, v) for k, v in extra_data.iteritems()
                  if k not in ('operations', 'created', 'payload', 'versions')) \
@@ -207,7 +207,7 @@ def handle_push(data, session=None):
                for obj in conflicting_objects
                if type(obj) is model]
         session.query(model).filter(getattr(model, pk_name).in_(pks)).\
-            delete(synchronize_session='fetch') # remove from the database
+            delete(synchronize_session=False) # remove from the database
     session.add_all(conflicting_objects) # reinsert
     session.flush()
 

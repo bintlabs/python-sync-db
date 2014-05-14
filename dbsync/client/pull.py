@@ -115,7 +115,7 @@ def merge(pull_message, session):
                for obj in conflicting_objects
                if type(obj) is model]
         session.query(model).filter(getattr(model, pk_name).in_(pks)).\
-            delete(synchronize_session='fetch') # remove from the database
+            delete(synchronize_session=False) # remove from the database
     session.add_all(conflicting_objects) # reinsert them
     session.flush()
 
