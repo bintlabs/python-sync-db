@@ -15,6 +15,7 @@ log_handler = None
 
 def get_logger(name):
     logger = logging.getLogger(name)
+    logger.setLevel(logging.WARNING)
     loggers.add(logger)
     if log_handler is not None:
         logger.addHandler(log_handler)

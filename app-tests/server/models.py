@@ -7,7 +7,7 @@ import dbsync
 from dbsync import server
 
 
-engine = create_engine("sqlite:///server.db")
+engine = create_engine("mysql://root:@localhost/dbsync_apptest", echo=True)
 Session = sessionmaker(bind=engine)
 
 
@@ -24,7 +24,7 @@ class City(Base):
     __tablename__ = "city"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String(500))
 
     def __repr__(self):
         return u"<City id: {0}; name: {1}>".format(self.id, self.name)
@@ -46,7 +46,7 @@ class House(Base):
     __tablename__ = "house"
 
     id = Column(Integer, primary_key=True)
-    address = Column(String)
+    address = Column(String(500), unique=True)
     city_id = Column(Integer, ForeignKey("city.id"))
 
     city = relationship(City, backref="houses")
@@ -65,12 +65,12 @@ class Person(Base):
                       Base.__table_args__)
 
     id = Column(Integer, primary_key=True)
-    first_name = Column(String)
-    last_name = Column(String)
+    first_name = Column(String(500))
+    last_name = Column(String(500))
     house_id = Column(Integer, ForeignKey("house.id"))
     birth_city_id = Column(Integer, ForeignKey("city.id"))
     birth_date = Column(Date)
-    email = Column(String)
+    email = Column(String(500))
 
     house = relationship(House, backref="persons")
     birth_city = relationship(City)

@@ -111,7 +111,9 @@ def merge(pull_message, session):
         make_transient(obj) # remove from session
     for model in set(type(obj) for obj in conflicting_objects):
         pk_name = get_pk(model)
-        pks = [getattr(obj, pk_name) for obj in conflicting_objects]
+        pks = [getattr(obj, pk_name)
+               for obj in conflicting_objects
+               if type(obj) is model]
         session.query(model).filter(getattr(model, pk_name).in_(pks)).\
             delete(synchronize_session='fetch') # remove from the database
     session.add_all(conflicting_objects) # reinsert them

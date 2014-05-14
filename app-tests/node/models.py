@@ -45,7 +45,7 @@ class House(Base):
     __tablename__ = "house"
 
     id = Column(Integer, primary_key=True)
-    address = Column(String)
+    address = Column(String, unique=True)
     city_id = Column(Integer, ForeignKey("city.id"))
 
     city = relationship(City, backref="houses")
