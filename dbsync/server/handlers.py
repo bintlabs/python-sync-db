@@ -218,10 +218,10 @@ def handle_push(data, session=None):
                        core.synched_models,
                        message,
                        session,
-                       node_id)
+                       message.node_id)
     except OperationError as e:
         logger.warning(u"Couldn't perform operation in push from node %s.",
-                       node_id)
+                       message.node_id)
         raise PushRejected("at least one operation couldn't be performed",
                            *e.args)
 
