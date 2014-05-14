@@ -37,6 +37,10 @@ from dbsync.messages.register import RegisterMessage
 from dbsync.messages.pull import PullMessage, PullRequestMessage
 from dbsync.messages.push import PushMessage
 from dbsync.server.conflicts import find_unique_conflicts
+from dbsync.logs import get_logger
+
+
+logger = get_logger(__name__)
 
 
 def handle_query(data):
@@ -199,7 +203,9 @@ def handle_push(data, session=None):
         make_transient(obj) # remove from session
     for model in set(type(obj) for obj in conflicting_objects):
         pk_name = get_pk(model)
-        pks = [getattr(obj, pk_name) for obj in conflicting_objects]
+        pks = [getattr(obj, pk_name)
+               for obj in conflicting_objects
+               if type(obj) is model]
         session.query(model).filter(getattr(model, pk_name).in_(pks)).\
             delete(synchronize_session='fetch') # remove from the database
     session.add_all(conflicting_objects) # reinsert
@@ -212,12 +218,13 @@ def handle_push(data, session=None):
                        core.synched_models,
                        message,
                        session,
-                       lambda s, errs: core.save_log(s, message.node_id, errs))
+                       node_id)
     except OperationError as e:
-        core.save_log('handlers.push.OperationError', 
-            message.node_id, [repr(arg) for arg in e.args])
+        logger.warning(u"Couldn't perform operation in push from node %s.",
+                       node_id)
         raise PushRejected("at least one operation couldn't be performed",
                            *e.args)
+
     # III) insert a new version
     version = Version(created=datetime.datetime.now(), node_id=message.node_id)
     session.add(version)

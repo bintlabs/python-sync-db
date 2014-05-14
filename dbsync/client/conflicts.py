@@ -20,8 +20,12 @@ from sqlalchemy.schema import UniqueConstraint
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, class_mapper, query_model, column_properties
-from dbsync.core import synched_models, save_log
+from dbsync.core import synched_models
 from dbsync.models import Operation, ContentType
+from dbsync.logs import get_logger
+
+
+logger = get_logger(__name__)
 
 
 def get_related_tables(sa_class):
@@ -316,10 +320,9 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                 # server, which must mean the server violated the
                 # constraint. Nothing to do here but to report the
                 # incident.
-                save_log("client.conflicts.find_unique_conflicts",
-                         None,
-                         ["Remote operation indicates unique constraint "
-                          "violation on the server",
-                          unique_columns,
-                          op])
+                logger.warning(
+                    u"Remote operation indicates unique constraint violation "
+                    u"on the server. Columns %s. Operation %s",
+                    unique_columns,
+                    op)
     return conflicts, errors

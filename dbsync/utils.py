@@ -97,18 +97,3 @@ def query_model(session, sa_class, only_pk=False):
             if isinstance(prop, ColumnProperty)
             if prop.key != pk)
     return session.query(sa_class).options(*opts)
-
-
-class AlwaysEmptyList(object):
-    """A list with a no-op append operation."""
-
-    def append(self, x): pass
-
-    def __iter__(self):
-        if False: yield
-
-    def __getitem__(self, key): raise IndexError("empty list")
-
-    def __len__(self): return 0
-
-    def __repr__(self): return "[]"

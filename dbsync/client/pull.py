@@ -83,7 +83,6 @@ def merge(pull_message, session):
                         "to perform the local merge operation")
     content_types = session.query(ContentType).all()
     valid_cts = set(ct.content_type_id for ct in content_types)
-    log = lambda s, errs: core.save_log(s, None, errs)
 
     compress()
     unversioned_ops = session.query(Operation).\
@@ -193,8 +192,7 @@ def merge(pull_message, session):
             local.perform(content_types,
                           core.synched_models,
                           pull_message,
-                          session,
-                          log)
+                          session)
             # delete trace of deletion
             purgelocal(local)
 
@@ -209,8 +207,7 @@ def merge(pull_message, session):
             pull_op.perform(content_types,
                             core.synched_models,
                             pull_message,
-                            session,
-                            log)
+                            session)
 
             session.flush()
 

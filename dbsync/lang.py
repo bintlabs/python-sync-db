@@ -7,7 +7,7 @@ from functools import partial, wraps
 
 
 def begin(arg, *args):
-    """Sequencing, for use in lambdas."""
+    "Sequencing, for use in lambdas."
     if not args:
         return arg
     return args[-1]
@@ -34,11 +34,13 @@ def swap(pair):
 
 
 def partition(predicate, collection):
-    """Splits the collection according to the predicate.
+    """
+    Splits the collection according to the predicate.
 
     Returns a pair of (true-tested, false-tested). Evaluating it is
     equivalent to evaluating ``(filter(predicate, collection),
-    filter(lambda e: not predicate(e), collection))``"""
+    filter(lambda e: not predicate(e), collection))``
+    """
     positives, negatives = [], []
     for e in collection:
         (positives if predicate(e) else negatives).append(e)
@@ -46,14 +48,14 @@ def partition(predicate, collection):
 
 
 def maybe(value, fn=identity, default=""):
-    """``if value is None: ...`` more compressed."""
+    "``if value is None: ...`` more compressed."
     if value is None:
         return default
     return fn(value)
 
 
 def guard(f):
-    """Propagate nothingness in a function of one argument."""
+    "Propagate nothingness in a function of one argument."
     @wraps(f)
     def g(x):
         return maybe(x, f, None)
@@ -61,7 +63,7 @@ def guard(f):
 
 
 class Function(object):
-    """Composable function for attr and method usage."""
+    "Composable function for attr and method usage."
     def __init__(self, fn):
         self.fn = fn
         self.__name__ = fn.__name__ # e.g. for the wraps decorator
@@ -114,17 +116,17 @@ class Function(object):
 
 
 def attr(name):
-    """For use in standard higher order functions."""
+    "For use in standard higher order functions."
     return Function(lambda obj: getattr(obj, name))
 
 
 def method(name, *args, **kwargs):
-    """For use in standard higher order functions."""
+    "For use in standard higher order functions."
     return Function(lambda obj: getattr(obj, name)(*args, **kwargs))
 
 
 def andmap(predicate, collection, *collections):
-    """Map predicate and reduce with and, short circuiting."""
+    "Map predicate and reduce with and, short circuiting."
     iters = map(iter, collections)
     for elem in collection:
         elems = map(next, iters)
@@ -134,7 +136,7 @@ def andmap(predicate, collection, *collections):
 
 
 def ormap(predicate, collection, *collections):
-    """Map predicate and reduce with or, short circuiting."""
+    "Map predicate and reduce with or, short circuiting."
     iters = map(iter, collections)
     for elem in collection:
         elems = map(next, iters)
@@ -144,9 +146,11 @@ def ormap(predicate, collection, *collections):
 
 
 def group_by(fn, col):
-    """Groups a collection according to the given *fn* into a dictionary.
+    """
+    Groups a collection according to the given *fn* into a dictionary.
 
-    *fn* should return a hashable. """
+    *fn* should return a hashable.
+    """
     groups = {}
     for e in col:
         key = fn(e)
@@ -159,8 +163,10 @@ def group_by(fn, col):
 
 
 def lookup(predicate, collection, default=None):
-    """Looks up the first value in *collection* that satisfies
-    *predicate*."""
+    """
+    Looks up the first value in *collection* that satisfies
+    *predicate*.
+    """
     for e in collection:
         if predicate(e):
             return e
@@ -168,8 +174,10 @@ def lookup(predicate, collection, default=None):
 
 
 def mfilter(predicate, lst):
-    """Removes the elements in *lst* that don't satisfy *predictate*,
-    mutating *lst* (a list or a set)."""
+    """
+    Removes the elements in *lst* that don't satisfy *predictate*,
+    mutating *lst* (a list or a set).
+    """
     matching = filter(lambda e: not predicate(e), lst)
     for e in matching:
         lst.remove(e)

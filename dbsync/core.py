@@ -4,13 +4,15 @@ Common functionality for model synchronization and version tracking.
 
 import zlib
 import inspect
+import logging
+logging.getLogger('dbsync').addHandler(logging.NullHandler())
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, AlwaysEmptyList
-from dbsync.models import ContentType, Operation, Version, Log
+from dbsync.utils import get_pk
+from dbsync.models import ContentType, Operation, Version
 from dbsync import dialects
 
 
@@ -94,11 +96,11 @@ def save_extensions(obj):
     extensions = model_extensions.get(type(obj).__name__, {})
     for field, ext in extensions.iteritems():
         _, _, savefn = ext
-        # Prevent infine push loops from nodes. Ugly, but works for now!!!!!
+        # Prevent infinite push loops from nodes. Ugly, but works for now!!!!!
         try:
             savefn(obj, getattr(obj, field, None))
         except:
-            pass
+            logger.warning(u"Couldn't save extension %s for object %s", field, obj)
 
 
 #: Toggled variable used to disable listening to operations momentarily.
@@ -150,11 +152,12 @@ def with_transaction(include_extensions=True):
         def wrapped(*args, **kwargs):
             session = Session()
             previous_state = dialects.begin_transaction(session)
-            added = [] if include_extensions else AlwaysEmptyList()
-            track_added = lambda fn: lambda o, **kws: begin(added.append(o),
-                                                            fn(o, **kws))
-            session.add = track_added(session.add)
-            session.merge = track_added(session.merge)
+            added = []
+            if include_extensions:
+                track_added = lambda fn: lambda o, **kws: begin(added.append(o),
+                                                                fn(o, **kws))
+                session.add = track_added(session.add)
+                session.merge = track_added(session.merge)
             result = None
             try:
                 kwargs.update({'session': session})
@@ -230,15 +233,3 @@ def get_latest_version_id(session=None):
     if closeit:
         session.close()
     return maybe(version, attr('version_id'), None)
-
-
-def save_log(source, node_id, errors):
-    "Insert record in Log table"
-    session = Session()
-    new_log = Log()
-    new_log.source = source
-    new_log.node_id = node_id
-    new_log.error = u", ".join(repr(arg) for arg in errors)
-    session.add(new_log)
-    session.commit()
-    session.close()

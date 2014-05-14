@@ -8,6 +8,7 @@ from dbsync.core import (
     set_engine,
     get_engine)
 from dbsync.models import Base
+from dbsync.logs import set_log_target
 
 
 def create_all():
