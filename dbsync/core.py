@@ -14,6 +14,10 @@ from dbsync.lang import *
 from dbsync.utils import get_pk
 from dbsync.models import ContentType, Operation, Version
 from dbsync import dialects
+from dbsync.logs import get_logger
+
+
+logger = get_logger(__name__)
 
 
 SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
