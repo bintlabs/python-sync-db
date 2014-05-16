@@ -71,7 +71,25 @@ def update_local_id(old_id, new_id, ct, content_types, session):
     session.flush()  # raise integrity errors now
 
 
-class UniqueConstraintError(Exception): pass
+class UniqueConstraintError(Exception):
+
+    entries = None
+
+    def __init__(self, entries):
+        super(UniqueConstraintError, self).__init__(entries)
+        self.entries = entries
+
+    def __repr__(self):
+        if not self.entries: return u"<UniqueConstraintError - empty>"
+        return u"<UniqueConstraintError - {0}>".format(
+            u"; ".join(
+                u"{0} pk {1} columns ({2})".format(
+                    entry['model'].__name__,
+                    entry['pk'],
+                    u", ".join(entry['columns']))
+                for entry in self.entries))
+
+    def __str__(self): return repr(self)
 
 
 def merge(pull_message, session):

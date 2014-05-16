@@ -226,7 +226,8 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
 
     Each error is a dictionary with the following fields::
 
-        object: the local conflicting object, bound to the session
+        model: the model (class) of the conflicting object
+        pk: the value of the primary key of the conflicting object
         columns: tuple of column names in the unique constraint
     """
 
@@ -313,7 +314,8 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                 # Two nodes created objects with the same unique
                 # values and pk. Human error.
                 errors.append(
-                    {'object': obj_conflict,
+                    {'model': type(obj_conflict),
+                     'pk': pk_conflict,
                      'columns': unique_columns})
             else:
                 # The conflicting object hasn't been modified on the

@@ -16,7 +16,7 @@ from dbsync.client.register import (
 	isregistered,
 	get_node,
 	save_node)
-from dbsync.client.pull import pull
+from dbsync.client.pull import UniqueConstraintError, pull
 from dbsync.client.push import push
 from dbsync.client.ping import isconnected, isready
 from dbsync.client.repair import repair
