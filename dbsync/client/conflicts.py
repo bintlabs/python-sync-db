@@ -319,12 +319,10 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                      'columns': unique_columns})
             else:
                 # The conflicting object hasn't been modified on the
-                # server, which must mean the server violated the
-                # constraint. Nothing to do here but to report the
-                # incident.
-                logger.warning(
-                    u"Remote operation indicates unique constraint violation "
-                    u"on the server. Columns %s. Operation %s",
-                    unique_columns,
-                    op)
+                # server, which must mean the local user is attempting
+                # an update that collides with one from another user.
+                errors.append(
+                    {'model': type(obj_conflict),
+                     'pk': pk_conflict,
+                     'columns': unique_columns})
     return conflicts, errors
