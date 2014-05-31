@@ -19,7 +19,7 @@ def begin_transaction(session):
         engine.execute("BEGIN EXCLUSIVE TRANSACTION;")
         return state
     if dialect == 'mysql':
-        # temporal by defaul
+        # temporal by default
         # see http://dev.mysql.com/doc/refman/5.7/en/using-system-variables.html
         engine.execute("SET foreign_key_checks = 0;")
         return None

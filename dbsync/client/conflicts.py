@@ -22,10 +22,6 @@ from dbsync.lang import *
 from dbsync.utils import get_pk, class_mapper, query_model, column_properties
 from dbsync.core import synched_models
 from dbsync.models import Operation, ContentType
-from dbsync.logs import get_logger
-
-
-logger = get_logger(__name__)
 
 
 def get_related_tables(sa_class):

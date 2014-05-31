@@ -80,62 +80,38 @@ def handle_repair(data=None):
 
 @core.with_listening(False)
 @core.with_transaction()
-def handle_register(user_id=None, session=None):
+def handle_register(user_id=None, node_id=None, session=None):
     """
     Handle a registry request, creating a new node, wrapping it in a
     message and returning it to the client node.
 
     *user_id* can be a numeric key to a user record, which will be set
     in the node record itself.
+
+    If *node_id* is given, it will be used instead of creating a new
+    node. This allows for node reuse according to criteria specified
+    by the programmer.
     """
+    message = RegisterMessage()
+    if node_id is not None:
+        node = session.query(Node).filter(Node.node_id == node_id).first()
+        if node is not None:
+            message.node = node
+            return message.to_json()
     newnode = Node()
     newnode.registered = datetime.datetime.now()
     newnode.registry_user_id = user_id
     newnode.secret = generate_secret(128)
     session.add(newnode)
     session.flush()
-    message = RegisterMessage()
     message.node = newnode
-    return message.to_json()
-
-
-def handle_pull(data, extra_data=None):
-    """
-    Handle the pull request and return a dictionary object to be sent
-    back to the node.
-
-    *data* must be a dictionary-like object, usually one containing
-    the GET parameters of the request.
-
-    *extra_data* Additional information to be sent back to client
-
-    DEPRECATED in favor of handle_pull_request
-    """
-    extra = dict((k, v) for k, v in extra_data.iteritems()
-                 if k not in ('operations', 'created', 'payload', 'versions')) \
-                 if extra_data is not None else {}
-
-    session = core.Session()
-    latest_version_id = data.get('latest_version_id', None)
-    try:
-        latest_version_id = int(latest_version_id)
-    except (ValueError, TypeError):
-        latest_version_id = None
-    swell = not 'fast_forward' in data # allows for smaller messages if False
-    versions = session.query(Version)
-    if latest_version_id is not None:
-        versions = versions.filter(Version.version_id > latest_version_id)
-    message = PullMessage(extra_data=extra)
-    for v in versions:
-        message.add_version(v, swell=swell, session=session)
-    session.close()
     return message.to_json()
 
 
 class PullRejected(Exception): pass
 
 
-def handle_pull_request(data, extra_data=None):
+def handle_pull(data, extra_data=None):
     """
     Handle the pull request and return a dictionary object to be sent
     back to the node.

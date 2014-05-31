@@ -61,7 +61,7 @@ def register():
 def pull():
     print json.dumps(request.json, indent=2)
     try:
-        return (json.dumps(server.handle_pull_request(request.json)),
+        return (json.dumps(server.handle_pull(request.json)),
                 200,
                 {"Content-Type": "application/json"})
     except server.handlers.PullRejected as e:
