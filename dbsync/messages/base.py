@@ -5,7 +5,7 @@ Base functionality for synchronization messages.
 import inspect
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, properties_dict
+from dbsync.utils import get_pk, properties_dict, construct_bare
 from dbsync.core import synched_models, model_extensions
 from dbsync import models
 from dbsync.messages.codecs import decode_dict, encode_dict
@@ -44,7 +44,7 @@ class ObjectType(object):
         if model is None:
             raise TypeError(
                 "model {0} isn't being tracked".format(self.__model_name__))
-        obj = model()
+        obj = construct_bare(model)
         for k in self.__keys__:
             setattr(obj, k, getattr(self, k))
         return obj
