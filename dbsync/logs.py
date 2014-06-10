@@ -23,10 +23,14 @@ def get_logger(name):
 
 
 def set_log_target(fo):
-    "Set a stream as target for dbsync's logging."
+    """
+    Set a stream as target for dbsync's logging. If a string is given,
+    it will be considered to be a path to a file.
+    """
     global log_handler
     if log_handler is None:
-        log_handler = logging.StreamHandler(fo)
+        log_handler = logging.FileHandler(fo) if isinstance(fo, basestring) \
+            else logging.StreamHandler(fo)
         log_handler.setLevel(logging.WARNING)
         log_handler.setFormatter(
             logging.Formatter(
