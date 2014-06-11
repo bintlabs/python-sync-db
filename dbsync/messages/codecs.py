@@ -4,6 +4,7 @@
 """
 
 import datetime
+import time # TODO remove time import after the deprecated codecs are removed
 import base64
 
 from sqlalchemy import types
@@ -25,11 +26,13 @@ def types_dict(class_):
 def _encode_table(type_):
     "*type_* is a SQLAlchemy data type."
     if isinstance(type_, types.Date):
-        return lambda value: [value.year, value.month, value.day]
+        return method('toordinal')
+        # return lambda value: [value.year, value.month, value.day]
     elif isinstance(type_, types.DateTime):
-        return lambda value: [value.year, value.month, value.day,
-                              value.hour, value.minute, value.second,
-                              value.microsecond]
+        return lambda value: time.mktime(value.timetuple())
+        # return lambda value: [value.year, value.month, value.day,
+        #                       value.hour, value.minute, value.second,
+        #                       value.microsecond]
     elif isinstance(type_, types.Time):
         return lambda value: [value.hour, value.minute, value.second,
                               value.microsecond]
@@ -52,12 +55,26 @@ def encode_dict(class_):
                               if k in encodings)
 
 
+def decode_date(value):
+    "TODO remove deprecated, backwards-compatible decoder"
+    if isinstance(value, list):
+        return datetime.date(*value)
+    return datetime.date.fromordinal(value)
+
+def decode_datetime(value):
+    "TODO remove deprecated, backwards-compatible decoder"
+    if isinstance(value, list):
+        return datetime.datetime(*value)
+    return datetime.datetime.fromtimestamp(value)
+
 def _decode_table(type_):
     "*type_* is a SQLAlchemy data type."
     if isinstance(type_, types.Date):
-        return lambda values: datetime.date(*values)
+        return decode_date
+        # return lambda values: datetime.date(*values)
     elif isinstance(type_, types.DateTime):
-        return lambda values: datetime.datetime(*values)
+        return decode_datetime
+        # return lambda values: datetime.datetime(*values)
     elif isinstance(type_, types.Time):
         return lambda values: datetime.time(*values)
     elif isinstance(type_, types.LargeBinary):
