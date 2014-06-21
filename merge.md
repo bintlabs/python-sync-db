@@ -18,19 +18,19 @@ Operations contained either in the server-sent message or the local
 journal are simply references to the object operated upon, and are
 split in three groups:
 
-* U: updates
-* I: inserts
-* D: deletes
+* `U`: updates
+* `I`: inserts
+* `D`: deletes
 
 To differentiate sent operations from local ones, the following
 notation is used:
 
-* U_m: updates in the message (sent from the server)
-* U_l: local updates
-* I_m: inserts in the message
-* I_l: local inserts
-* D_m: deletes in the message
-* D_l: local deletes
+* `U_m`: updates in the message (sent from the server)
+* `U_l`: local updates
+* `I_m`: inserts in the message
+* `I_l`: local inserts
+* `D_m`: deletes in the message
+* `D_l`: local deletes
 
 Also, when mentioning 'local operations', the intention is to refer to
 the unversioned local operations (i.e. the ones not yet pushed to the
@@ -39,14 +39,14 @@ server).
 Finally, the following notation for sets, operators and quantifiers is
 used:
 
-* DB: set of all objects in the local database
-* MSG: set of all objects in the server-sent message
-* union: set union
-* inter: set intersection
-* empty: the empty set
-* map: map a function to a set (e.g. map( x -> x*2, { 1, 2, 3 } ) = { 2, 4, 6 })
-* in: element in set (e.g. 2 in { 5, 6, 2 })
-* forall: 'for all' quantifier
+* `DB`: set of all objects in the local database
+* `MSG`: set of all objects in the server-sent message
+* `union`: set union
+* `inter`: set intersection
+* `empty`: the empty set
+* `map`: map a function to a set (e.g. `map( x -> x*2, { 1, 2, 3 } ) = { 2, 4, 6 }`)
+* `in`: element in set (e.g. `2 in { 5, 6, 2 }`)
+* `forall`: 'for all' quantifier
 
 Detection of conflicts over object identity
 -------------------------------------------
@@ -97,18 +97,18 @@ collision:
   As notation, an object _x_ being the "child" of an object referenced
   by _y_ (_y_ is only a reference) will be written:
 
-  _x_ FK _y_
+      x FK y
 
-  With this, the **dependency** conflicts can be defined as::
+  With this, the **dependency** conflicts can be defined as:
 
       dependency := { (remote, local) forall remote in D_m,
                                       forall local in (I_l union U_l) /
                       fetch_object(local, DB)) FK object_ref(remote) }
 
-  Since the FK relationship doesn't match references with references
+  Since the `FK` relationship doesn't match references with references
   (the "child" must be a real database object), an aditional 'fetch'
   phase is required. The function *fetch_object* could be defined as a
-  container query (container meaning object store, e.g. DB or MSG)
+  container query (container meaning object store, e.g. `DB` or `MSG`)
   given the reference, or:
 
       fetch: References, Containers -> Objects
@@ -182,7 +182,7 @@ application.)
 
 The main requirement for the operation sets before conflict detection
 is that at most one operation exists for each database object involved
-in the synchronization. This means::
+in the synchronization. This means:
 
     map(object_ref, U_l) inter map(object_ref, I_l) = empty
     map(object_ref, I_l) inter map(object_ref, D_l) = empty
@@ -215,7 +215,7 @@ The previous example illustrates a compression rule for the local
 database: sequences that start with an insert and end in a delete must
 be wholly removed from the journal. A less intuitive rule applied to
 the server-sent message is: sequences that start with a delete and end
-with a non-delete must be reduced to a single update::
+with a non-delete must be reduced to a single update:
 
     d, i, u, u => u
     d, i => u
