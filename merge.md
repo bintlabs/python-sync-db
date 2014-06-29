@@ -220,8 +220,8 @@ with a non-delete must be reduced to a single update:
     d, i, u, u => u
     d, i => u
 
-With this pattern-based notation (where '*' is the [Kleene
-star][kleene-star], '|' is an OR, and '~' is an ANYTHING BUT), the
+With this pattern-based notation (where `*` is the [Kleene
+star][kleene-star], `|` is an OR, and `~` is an ANYTHING BUT), the
 whole set of rules can be written as:
 
 [kleene-star]: https://en.wikipedia.org/wiki/Kleene_star
