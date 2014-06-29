@@ -188,7 +188,7 @@ in the synchronization. This means:
     map(object_ref, I_l) inter map(object_ref, D_l) = empty
     map(object_ref, U_l) inter map(object_ref, D_l) = empty
 
-And for the server-sent operations, too::
+And for the server-sent operations, too:
 
     map(object_ref, U_m) inter map(object_ref, I_m) = empty
     map(object_ref, I_m) inter map(object_ref, D_m) = empty
@@ -197,14 +197,14 @@ And for the server-sent operations, too::
 Operation compression must reach these states for the merge to have a
 good chance of success.
 
-The rules applied for compressing sequences of operations are simple,
-yet different when compressing the local database or the server-sent
-operations. The library assumes that the local database is complying
-with the restriction imposed on its use: primary keys cannot be
-recycled. When this is true, a delete operation marks the end of an
-object reference's lifetime. Thus, a delete operation must be the
-final operation of a local operation sequence, each time a delete
-exists at all in said sequence.
+The rules applied for compressing sequences of operations over a
+single object are simple, yet different when compressing the local
+database or the server-sent operations. The library assumes that the
+local database is complying with the restriction imposed on its use:
+primary keys cannot be recycled. When this is true, a delete operation
+marks the end of an object reference's lifetime. Thus, a delete
+operation must be the final operation of a local operation sequence,
+each time a delete exists at all in said sequence.
 
 On the server-sent message, however, the operation set could be
 originated from various nodes. Since conflict resolution could (and
@@ -220,8 +220,37 @@ with a non-delete must be reduced to a single update:
     d, i, u, u => u
     d, i => u
 
-More rules are needed to reach the requirements, but they won't be
-detailed here.
+With this pattern-based notation (where '*' is the [Kleene
+star][kleene-star], '|' is an OR, and '~' is an ANYTHING BUT), the
+whole set of rules can be written as:
+
+[kleene-star]: https://en.wikipedia.org/wiki/Kleene_star
+
+Local compression:
+
+    i, u* => i
+    i, u*, d => empty
+    u, u* => u
+    u*, d => d
+
+Compression on the server-sent message:
+
+    i, (i|u|d)*, d => empty
+    i, (i|u|d)*, ~d => i
+    u, (i|u|d)*, d => d
+    u, (i|u|d)*, ~d => u
+    d, (i|u|d)*, d => d
+    d, (i|u|d)*, ~d => u
+
+Also, any sequence with only one operation is left intact, on either
+compression routine.
+
+While the rules for compressing the server-sent operations cover all
+possible sequences, the rules for the local operations don't. If a
+local operation sequence is found not to match any of those rules, a
+warning is emitted that notifies the user of probable database
+intervention, or failure to comply with the library's restriction on
+primary keys.
 
 Conflict resolution
 -------------------
