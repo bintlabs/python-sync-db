@@ -195,7 +195,9 @@ And for the server-sent operations, too:
     map(object_ref, U_m) inter map(object_ref, D_m) = empty
 
 Operation compression must reach these states for the merge to have a
-good chance of success.
+good chance of success. Of course, not any modification of the journal
+is a valid one. It's purpose must be preserved: to record a way to
+reach the current database state from the previous one.
 
 The rules applied for compressing sequences of operations over a
 single object are simple, yet different when compressing the local
@@ -220,30 +222,35 @@ with a non-delete must be reduced to a single update:
     d, i, u, u => u
     d, i => u
 
-With this pattern-based notation (where `*` is the [Kleene
-star][kleene-star], `|` is an OR, and `~` is an ANYTHING BUT), the
-whole set of rules can be written as:
+With this pattern-based notation, where to the left of the `=>` is a
+comma-separated sequence of expressions that match operations, and to
+the left is a singleton set or the empty set, the whole set of rules
+can be written succinctly:
+
+Let `*` be the [Kleene star][kleene-star], `.` be a matching
+expression for any operation, `~x` be a matching expression for
+anything but `x` (i.e. not `x`):
 
 [kleene-star]: https://en.wikipedia.org/wiki/Kleene_star
 
 Local compression:
 
-    i, u* => i
+    i, u*    => i
     i, u*, d => empty
-    u, u* => u
-    u*, d => d
+    u, u*    => u
+    u*, d    => d
 
 Compression on the server-sent message:
 
-    i, (i|u|d)*, d => empty
-    i, (i|u|d)*, ~d => i
-    u, (i|u|d)*, d => d
-    u, (i|u|d)*, ~d => u
-    d, (i|u|d)*, d => d
-    d, (i|u|d)*, ~d => u
-
-Also, any sequence with only one operation is left intact, on either
-compression routine.
+    i         => i
+    u         => u
+    d         => d
+    i, .*, d  => empty
+    i, .*, ~d => i
+    u, .*, d  => d
+    u, .*, ~d => u
+    d, .*, d  => d
+    d, .*, ~d => u
 
 While the rules for compressing the server-sent operations cover all
 possible sequences, the rules for the local operations don't. If a
@@ -255,7 +262,26 @@ primary keys.
 Conflict resolution
 -------------------
 
-TODO define conflict resolution (maybe split in parts). Include
-general strategy and possible future "parametric strategies".
+At the beginning of this document an analogy was made with the 'git
+rebase' command. This analogy is good enough but not great. First of
+all, neither git rebase not git merge perform conflict
+resolution. They detect conflicts and notify the users, leaving them
+with the choices. Secondly, git rebase operates on branches and alters
+the commit graph that forms the history of a project. Git allows and
+encourages history branching, while dbsync doesn't do anything of the
+sort.
+
+In dbsync, all history is linear, which is what one would get in git
+in, say, the master branch, if every other branch in a project joined
+changes with 'git rebase master' and then forwarded them to
+master. While git has the commit as a unit of change, dbsync has the
+'version'. A version is simply an identifier given always by the
+server in response to a successful push call. This is probably as far
+as the analogy goes: A node wants to push a new version, but to do so
+it has to 'rebase' it's changes with the new versions from the server.
+
+TODO define conflict resolution (maybe split in
+parts). Include general strategy and possible future "parametric
+strategies".
 
 TODO define unique constraint conflicts and their resolution.
