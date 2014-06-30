@@ -224,7 +224,7 @@ with a non-delete must be reduced to a single update:
 
 With this pattern-based notation, where to the left of the `=>` is a
 comma-separated sequence of expressions that match operations, and to
-the left is a singleton set or the empty set, the whole set of rules
+the right is a singleton set or the empty set, the whole set of rules
 can be written succinctly:
 
 Let `*` be the [Kleene star][kleene-star], `.` be a matching
