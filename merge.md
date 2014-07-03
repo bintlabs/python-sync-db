@@ -9,10 +9,9 @@ call). After the merge, the local database should roughly be left in
 the state that could have been reached by applying the changes from
 the server before modifying the local state, and then changing the
 local database in whatever application-specific manner it was
-changed. The expected behaviour is somewhat similar to the ['git
-rebase'][git-rebase] command.
-
-[git-rebase]: http://www.git-scm.com/book/en/Git-Branching-Rebasing
+changed. The expected behaviour is somewhat similar to the
+consolidation performed by the various version control systems when
+multiple changes are applied by different authors to a single file.
 
 Operations contained either in the server-sent message or the local
 journal are simply references to the object operated upon, and are
@@ -55,11 +54,10 @@ An early step of the merge subroutine is to detect the conflicts that
 could happen if the server operations were performed directly, without
 checks. For example, attempting a server-sent update operation over an
 object already deleted locally would result in an error. On the other
-hand, if the 'rebase' notion were to be respected, the local delete
-operation would be performed last and the update sent from the server
-would be meaningless (although dbsync doesn't handle deletions that
-way). Regardless of the actual conflict resolution, the case needs to
-be detected properly.
+hand, if the local operation were to be given priority, the (local)
+delete would be performed last and the update sent from the server
+would be ignored. Regardless of the actual conflict resolution, the
+case needs to be detected properly.
 
 These conflicts are 'over object identity' because they involve object
 existence. The other kind of conflicts resolved by dbsync are those
@@ -172,8 +170,8 @@ before ever being synchronized. Without care for these cases, the
 merge subroutine would detect conflicts between operations that could
 have been "compressed out" completely. Also, and as shown in this
 example, a 'fetch' call on object _x_ would have failed since it
-wouldn't exist any longer. This operation compression is the earliest
-phase in the merge subroutine.
+wouldn't exist in the database any longer. This operation compression
+is the earliest phase in the merge subroutine.
 
 (Worth noting from this example is that operations can be sorted in
 some way. The sorting criteria is the order in which they were logged
@@ -262,26 +260,24 @@ primary keys.
 Conflict resolution
 -------------------
 
-At the beginning of this document an analogy was made with the 'git
-rebase' command. This analogy is good enough but not great. First of
-all, neither git rebase not git merge perform conflict
-resolution. They detect conflicts and notify the users, leaving them
-with the choices. Secondly, git rebase operates on branches and alters
-the commit graph that forms the history of a project. Git allows and
-encourages history branching, while dbsync doesn't do anything of the
-sort.
+A 'merge' is a common operation in version control systems
+(VCSs). Usually, a VCS will detect conflicting changes and notify the
+users, leaving them with the choices. They don't perform automatic
+conflict resolution by default, since in general the criteria applied
+in resolving each conflict is specific and even unclear. Dbsync
+however is currently implemented with a fixed conflict resolution
+strategy. As such, incorrect choices are sometimes made, but the
+strategy is forgiving enough that data loss is mostly avoided. A way
+to abstract and let the users build their own strategies is an
+improvement that will be left for the next major version.
 
-In dbsync, all history is linear, which is what one would get in git
-in, say, the master branch, if every other branch in a project joined
-changes with 'git rebase master' and then forwarded them to
-master. While git has the commit as a unit of change, dbsync has the
-'version'. A version is simply an identifier given always by the
-server in response to a successful push call. This is probably as far
-as the analogy goes: A node wants to push a new version, but to do so
-it has to 'rebase' it's changes with the new versions from the server.
+Another point worth comparing with VCSs is history tracking. In
+dbsync, all history is linear and irreversible. There are no branches
+and there's no 'revert' procedure. These features are consequence of
+the core design and can't be changed easily. As such, it's better to
+rely on backups on the server if a way to revert changes is
+required.
 
-TODO define conflict resolution (maybe split in
-parts). Include general strategy and possible future "parametric
-strategies".
+TODO define conflict resolution
 
 TODO define unique constraint conflicts and their resolution.
