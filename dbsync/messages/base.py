@@ -12,7 +12,7 @@ from dbsync.messages.codecs import decode_dict, encode_dict
 
 
 class ObjectType(object):
-    """Wrapper for tracked objects."""
+    "Wrapper for tracked objects."
 
     def __init__(self, mname, pk, **kwargs):
         self.__model_name__ = mname
@@ -51,7 +51,7 @@ class ObjectType(object):
 
 
 class MessageQuery(object):
-    """Query over internal structure of a message."""
+    "Query over internal structure of a message."
 
     def __init__(self, target, payload):
         if target == models.Operation or \
@@ -68,13 +68,17 @@ class MessageQuery(object):
         self.payload = payload
 
     def query(self, model):
-        """Returns a new query with a different target, without
-        filtering."""
+        """
+        Returns a new query with a different target, without
+        filtering.
+        """
         return MessageQuery(model, self.payload)
 
     def filter(self, predicate):
-        """Returns a new query with the collection filtered according
-        to the predicate applied to the target objects."""
+        """
+        Returns a new query with the collection filtered according to
+        the predicate applied to the target objects.
+        """
         to_filter = self.payload.get(self.target, None)
         if to_filter is None:
             return self
@@ -83,7 +87,7 @@ class MessageQuery(object):
             dict(self.payload, **{self.target: filter(predicate, to_filter)}))
 
     def __iter__(self):
-        """Yields objects mapped to their original type (*target*)."""
+        "Yields objects mapped to their original type (*target*)."
         m = identity if self.target.startswith('models.') \
             else method('to_mapped_object')
         lst = self.payload.get(self.target, None)
@@ -92,18 +96,20 @@ class MessageQuery(object):
                 yield e
 
     def all(self):
-        """Returns a list of all queried objects."""
+        "Returns a list of all queried objects."
         return list(self)
 
     def first(self):
-        """Returns the first of the queried objects, or ``None`` if no
-        objects matched."""
+        """
+        Returns the first of the queried objects, or ``None`` if no
+        objects matched.
+        """
         try: return next(iter(self))
         except StopIteration: return None
 
 
 class BaseMessage(object):
-    """The base type for messages with a payload."""
+    "The base type for messages with a payload."
 
     #: dictionary of (model name, set of wrapped objects)
     payload = None
@@ -123,11 +129,11 @@ class BaseMessage(object):
                     imap(decode_dict(m), v)))
 
     def query(self, model):
-        """Returns a query object for this message."""
+        "Returns a query object for this message."
         return MessageQuery(model, self.payload)
 
     def to_json(self):
-        """Returns a JSON-friendly python dictionary."""
+        "Returns a JSON-friendly python dictionary."
         encoded = {}
         encoded['payload'] = {}
         for k, objects in self.payload.iteritems():
@@ -138,7 +144,7 @@ class BaseMessage(object):
         return encoded
 
     def add_object(self, obj, include_extensions=True):
-        """Adds an object to the message, if it's not already in."""
+        "Adds an object to the message, if it's not already in."
         class_ = type(obj)
         classname = class_.__name__
         obj_set = self.payload.get(classname, set())

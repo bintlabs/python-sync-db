@@ -4,7 +4,6 @@
 """
 
 import datetime
-import time # TODO remove time import after the deprecated codecs are removed
 import base64
 
 from sqlalchemy import types
@@ -26,13 +25,11 @@ def types_dict(class_):
 def _encode_table(type_):
     "*type_* is a SQLAlchemy data type."
     if isinstance(type_, types.Date):
-        return method('toordinal')
-        # return lambda value: [value.year, value.month, value.day]
+        return lambda value: [value.year, value.month, value.day]
     elif isinstance(type_, types.DateTime):
-        return lambda value: time.mktime(value.timetuple())
-        # return lambda value: [value.year, value.month, value.day,
-        #                       value.hour, value.minute, value.second,
-        #                       value.microsecond]
+        return lambda value: [value.year, value.month, value.day,
+                              value.hour, value.minute, value.second,
+                              value.microsecond]
     elif isinstance(type_, types.Time):
         return lambda value: [value.hour, value.minute, value.second,
                               value.microsecond]
@@ -71,12 +68,12 @@ def _decode_table(type_):
     "*type_* is a SQLAlchemy data type."
     if isinstance(type_, types.Date):
         return decode_date
-        # return lambda values: datetime.date(*values)
+        # return partial(apply, datetime.date)
     elif isinstance(type_, types.DateTime):
         return decode_datetime
-        # return lambda values: datetime.datetime(*values)
+        # return partial(apply, datetime.datetime)
     elif isinstance(type_, types.Time):
-        return lambda values: datetime.time(*values)
+        return partial(apply, datetime.time)
     elif isinstance(type_, types.LargeBinary):
         return base64.standard_b64decode
     return identity
