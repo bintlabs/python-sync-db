@@ -3,7 +3,7 @@ Generic functions for repeating patterns.
 """
 
 from itertools import imap, ifilter, starmap, izip, dropwhile, takewhile
-from functools import partial, wraps
+from functools import partial as partial_apply, wraps
 
 
 def begin(arg, *args):
@@ -60,6 +60,17 @@ def guard(f):
     def g(x):
         return maybe(x, f, None)
     return g
+
+
+def partial(f, *arguments):
+    """
+    http://bugs.python.org/issue3445
+    https://docs.python.org/2/library/functools.html#partial-objects
+    """
+    p = partial_apply(f, *arguments)
+    p.__module__ = f.__module__
+    p.__name__ = "partial-{0}".format(f.__name__)
+    return p
 
 
 class Function(object):
