@@ -278,6 +278,45 @@ the core design and can't be changed easily. As such, it's better to
 rely on backups on the server if a way to revert changes is
 required.
 
-TODO define conflict resolution
+Given this weakness in the library, the strategy chosen is meant to
+preserve the operations performed in the node over those in the
+server. A merge occurs in the node, and the conflict resolution won't
+be reflected back to the server untill the next 'push'. With these
+grounds, the strategy can be written plainly as:
+
+1. When delete operations are in any conflict with non-delete
+   operations, revert them. Reverting them means to reinsert the
+   deleted object (fetching from the complementary container), and
+   also to either delete the operation from the journal (a local
+   delete operation) or to nullify the operation with a new insert
+   operation (a server-sent delete operation). The difference in the
+   way to revert the delete operation is what mandates the separation
+   of **dependency conflicts** in two categories.
+
+2. When update operations collide, keep the local changes over the
+   server-sent ones. This is strictly a case of data loss, but it can
+   be handled, though cumbersomely, through centralized back-ups.
+
+3. As mentioned earlier, insert operations colliding will result in
+   the allocation of a new primary key for the server-sent
+   object. Since primary keys are presumed to be integers, the
+   incoming object is currently given a primary key of value equals to
+   the successor of the maximum primary key found on the corresponding
+   table. Even in the case the library would allow primary keys of
+   different types in the future, this part of the current strategy
+   would force the application to not give any meaning to them.
+
+4. Delete-delete conflicts translate to a single delete.
+
+The conflict resolution is done as required while attempting to
+perform each of the server-sent operations. Each remote operation is
+checked for conflicts and is finally either allowed, blocked, or added
+extra side-efects as consequence of the strategy defined above. Once
+the final remote operation is handled, the local version identifier is
+updated and the merge concludes successfully. Any error is reported
+before completion in the form of a thrown exception.
+
+Unique constraints
+------------------
 
 TODO define unique constraint conflicts and their resolution.

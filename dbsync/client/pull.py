@@ -25,8 +25,10 @@ from dbsync.client.net import post_request
 # Utilities specific to the merge
 
 def max_local(ct, session):
-    """Returns the maximum value for the primary key of the given
-    content type in the local database."""
+    """
+    Returns the maximum value for the primary key of the given content
+    type in the local database.
+    """
     model = core.synched_models.get(ct.model_name)
     if model is None:
         raise ValueError("can't find model for content type {0}".format(ct))
@@ -34,15 +36,19 @@ def max_local(ct, session):
 
 
 def max_remote(ct, container):
-    """Returns the maximum value for the primary key of the given
-    content type in the container."""
+    """
+    Returns the maximum value for the primary key of the given content
+    type in the container.
+    """
     return max(getattr(obj, get_pk(obj))
                for obj in container.query(ct.model_name))
 
 
 def update_local_id(old_id, new_id, ct, content_types, session):
-    """Updates the tuple matching *old_id* with *new_id*, and updates
-    all dependent tuples in other tables as well."""
+    """
+    Updates the tuple matching *old_id* with *new_id*, and updates all
+    dependent tuples in other tables as well.
+    """
     # Updating either the tuple or the dependent tuples first would
     # cause integrity violations if the transaction is flushed in
     # between. The order doesn't matter.
@@ -93,9 +99,11 @@ class UniqueConstraintError(Exception):
 
 
 def merge(pull_message, session):
-    """Merges a message from the server with the local database.
+    """
+    Merges a message from the server with the local database.
 
-    *pull_message* is an instance of dbsync.messages.pull.PullMessage."""
+    *pull_message* is an instance of dbsync.messages.pull.PullMessage.
+    """
     if not isinstance(pull_message, PullMessage):
         raise TypeError("need an instance of dbsync.messages.pull.PullMessage "
                         "to perform the local merge operation")
@@ -168,6 +176,8 @@ def merge(pull_message, session):
     for pull_op in pull_ops:
         # flag to control whether the remote operation is free of obstacles
         can_perform = True
+        # flag to detect the early exclusion of a remote operation
+        reverted = False
         # the content type and class of the operation
         ct = lookup(attr('content_type_id') == pull_op.content_type_id,
                     content_types)
@@ -180,17 +190,19 @@ def merge(pull_message, session):
             for local in direct:
                 pair = (pull_op.command, local.command)
                 if pair == ('u', 'u'):
-                    can_perform = False  # favor local changes over remote ones
+                    can_perform = False # favor local changes over remote ones
                 elif pair == ('u', 'd'):
-                    pull_op.command = 'i'  # negate the local delete
+                    pull_op.command = 'i' # negate the local delete
                     purgelocal(local)
                 elif pair == ('d', 'u'):
-                    local.command = 'i'  # negate the remote delete
-                else:  # ('d', 'd')
+                    local.command = 'i' # negate the remote delete
+                    session.flush()
+                    reverted = True
+                else: # ('d', 'd')
                     purgelocal(local)
 
         dependency = extract(pull_op, dependency_conflicts)
-        if dependency:
+        if dependency and not reverted:
             can_perform = False
             order = min(op.order for op in unversioned_ops)
             # first move all operations further in order, to make way
@@ -244,7 +256,8 @@ class BadResponseError(Exception):
 @core.with_transaction()
 def pull(pull_url, extra_data=None,
          encode=None, decode=None, headers=None, monitor=None, session=None):
-    """Attempts a pull from the server. Returns the response body.
+    """
+    Attempts a pull from the server. Returns the response body.
 
     Additional data can be passed to the request by giving
     *extra_data*, a dictionary of values.
@@ -257,9 +270,9 @@ def pull(pull_url, extra_data=None,
     function is ``json.loads``, and the *headers* are appropriate HTTP
     headers for JSON.
 
-    *monitor* should be a routine that receives two arguments: the
-    total amount of bytes of the response (``None`` if unknown), and
-    the amount received."""
+    *monitor* should be a routine that receives a dictionary with
+    information of the state of the request and merge procedure.
+    """
     assert isinstance(pull_url, basestring), "pull url must be a string"
     assert bool(pull_url), "pull url can't be empty"
     if extra_data is not None:

@@ -59,7 +59,10 @@ will fetch all operations executed on the server since the divergence
 point, and will merge those with the client's operation log. This
 merge operation executes internally and includes the conflict
 resolution phase, which ideally will resolve the potential operation
-collisions.
+collisions ([further explanation][merge-subroutine] of the merge
+subroutine).
+
+[merge-subroutine]: https://github.com/bintlabs/python-sync-db/blob/master/merge.md
 
 ![Synchronization sequence](https://raw.github.com/bintlabs/python-sync-db/master/diagram.png)
 
