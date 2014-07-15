@@ -1,4 +1,4 @@
-    Merge
+Merge
 =====
 
 The merge subroutine occurs during the pull synchronization procedure,
