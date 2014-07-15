@@ -334,6 +334,6 @@ References
 3. Microsoft, Introduction to Sync Framework Database
    Synchronization. [Source](http://msdn.microsoft.com/en-us/sync/bb887608.aspx)
 
-# TODO reference to firebase
+TODO reference to firebase
 
-# TODO reference to sybase mobilink
+TODO reference to sybase mobilink
