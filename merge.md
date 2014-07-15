@@ -1,4 +1,4 @@
-Merge
+    Merge
 =====
 
 The merge subroutine occurs during the pull synchronization procedure,
@@ -320,3 +320,20 @@ Unique constraints
 ------------------
 
 TODO define unique constraint conflicts and their resolution.
+
+References
+----------
+
+1. Gerritsen J. (2012), Detecting synchronization conflicts for
+   horizontally decentralized relational
+   databases. [Source](http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf)
+
+2. Kirkman R. (2013), Simple Relational Database
+   Sync. [Source](http://ryankirkman.com/2013/02/03/simple-relational-database-sync.html)
+
+3. Microsoft, Introduction to Sync Framework Database
+   Synchronization. [Source](http://msdn.microsoft.com/en-us/sync/bb887608.aspx)
+
+# TODO reference to firebase
+
+# TODO reference to sybase mobilink
