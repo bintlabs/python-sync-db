@@ -326,14 +326,18 @@ References
 
 1. Gerritsen J. (2012), Detecting synchronization conflicts for
    horizontally decentralized relational
-   databases. [Source](http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf)
+   databases. [Source](http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf).
 
 2. Kirkman R. (2013), Simple Relational Database
-   Sync. [Source](http://ryankirkman.com/2013/02/03/simple-relational-database-sync.html)
+   Sync. [Source](http://ryankirkman.com/2013/02/03/simple-relational-database-sync.html).
 
 3. Microsoft, Introduction to Sync Framework Database
-   Synchronization. [Source](http://msdn.microsoft.com/en-us/sync/bb887608.aspx)
+   Synchronization. [Source](http://msdn.microsoft.com/en-us/sync/bb887608.aspx).
 
-TODO reference to firebase
+4. Narayanan A. (2013), Where does Firebase fit in your
+   app?. [Source](https://www.firebase.com/blog/2013-03-25-where-does-firebase-fit.html).
 
-TODO reference to sybase mobilink
+5. Hurst G. (2012), MobiLink 12
+   Performance. [Source](http://www.sybase.com/files/White_Papers/wp-ias-MobiLink12Performance.pdf).
+
+TODO actually refer to those
