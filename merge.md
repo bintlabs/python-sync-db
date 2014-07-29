@@ -306,7 +306,8 @@ grounds, the strategy can be written plainly as:
    different types in the future, this part of the current strategy
    would force the application to not give any meaning to them.
 
-4. Delete-delete conflicts translate to a single delete.
+4. Delete-delete conflicts translate to a no-operation, and the local
+   delete entry is removed from the journal.
 
 The conflict resolution is done as required while attempting to
 perform each of the server-sent operations. Each remote operation is
