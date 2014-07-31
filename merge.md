@@ -340,7 +340,7 @@ compressed operation (a single update for each object) during a merge
 subroutine would result in an error not previously accounted for. Also
 worth noting is that the given example shows only the case of a
 one-step swap, on a single constrained attribute. Multiple-step swaps
-(involving more than one object) and multiple-column constraints are
+(involving more than two objects) and multiple-column constraints are
 also variations to consider.
 
 Not every case of unique constraint violation is caused by dbsync,
@@ -350,8 +350,8 @@ being a consequence of dbsync's poor logging. These cases happen
 because the constraint is checked locally by the database management
 system or engine, and not against the synchronization server. Dbsync
 detects these as well, and interrupts the merge subroutine with a
-specialized exception that contains (hopefully) enough details for the
-user to resolve it.
+specialized exception that contains required details for the end user
+to resolve it.
 
 TODO define unique constraint resolution.
 
