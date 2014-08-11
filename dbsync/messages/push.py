@@ -14,14 +14,15 @@ from dbsync.utils import (
     query_model)
 from dbsync.lang import *
 
-from dbsync.core import Session, synched_models
+from dbsync.core import Session, synched_models, pushed_models
 from dbsync.models import Node, Operation
 from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
 
 class PushMessage(BaseMessage):
-    """A push message.
+    """
+    A push message.
 
     A push message contains the latest version information, the node
     information, and the list of unversioned operations and the
@@ -41,7 +42,8 @@ class PushMessage(BaseMessage):
     the server to be the initial data load.
 
     To verify correctness, use ``islegit`` giving a session with
-    access to the synch database."""
+    access to the synch database.
+    """
 
     #: Datetime of creation
     created = None
@@ -62,9 +64,11 @@ class PushMessage(BaseMessage):
     operations = None
 
     def __init__(self, raw_data=None):
-        """*raw_data* must be a python dictionary. If not given, the
+        """
+        *raw_data* must be a python dictionary. If not given, the
         message will be empty and should be filled after
-        instantiation."""
+        instantiation.
+        """
         super(PushMessage, self).__init__(raw_data)
         if raw_data is not None:
             self._build_from_raw(raw_data)
@@ -82,7 +86,7 @@ class PushMessage(BaseMessage):
                               imap(decode_dict(Operation), data['operations']))
 
     def query(self, model):
-        """Returns a query object for this message."""
+        "Returns a query object for this message."
         return MessageQuery(
             model,
             dict(
@@ -90,7 +94,8 @@ class PushMessage(BaseMessage):
                 **{'models.Operation': self.operations}))
 
     def to_json(self):
-        """Returns a JSON-friendly python dictionary. Structure::
+        """
+        Returns a JSON-friendly python dictionary. Structure::
 
             created: datetime,
             node_id: node primary key or null,
@@ -110,7 +115,7 @@ class PushMessage(BaseMessage):
         return encoded
 
     def _portion(self):
-        """Returns part of this message as a string."""
+        "Returns part of this message as a string."
         portion = "".join("&{0}#{1}#{2}".\
                               format(op.row_id, op.content_type_id, op.command)
                           for op in self.operations)
@@ -121,14 +126,14 @@ class PushMessage(BaseMessage):
             self.key = hashlib.sha512(self._secret + self._portion()).hexdigest()
 
     def set_node(self, node):
-        """Sets the node and key for this message."""
+        "Sets the node and key for this message."
         if node is None: return
         self.node_id = node.node_id
         self._secret = node.secret
         self._sign()
 
     def islegit(self, session):
-        """Checks whether the key for this message is proper."""
+        "Checks whether the key for this message is proper."
         if self.key is None or self.node_id is None: return False
         node = session.query(Node).filter(Node.node_id == self.node_id).one()
         return self.key == hashlib.sha512(node.secret + self._portion()).\
@@ -140,6 +145,7 @@ class PushMessage(BaseMessage):
         if model is None:
             raise ValueError("operation linked to model %s "\
                                  "which isn't being tracked" % mname)
+        if model not in pushed_models: return self
         obj = query_model(session, model).\
             filter_by(**{get_pk(model): op.row_id}).first() \
             if op.command != 'd' else None
@@ -154,8 +160,10 @@ class PushMessage(BaseMessage):
         return self
 
     def add_unversioned_operations(self, session=None):
-        """Adds all unversioned operations to this message, including
-        the required objects for them to be performed."""
+        """
+        Adds all unversioned operations to this message, including the
+        required objects for them to be performed.
+        """
         closeit = session is None
         session = Session() if closeit else session
         operations = session.query(Operation).\

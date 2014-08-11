@@ -150,17 +150,24 @@ def unsynched_objects():
     represents the operation that altered the objects state (insert,
     update or delete). If it's a delete, the object won't be present
     in the tracked database.
+
+    Because of compatibility issues, this procedure will only return
+    triads for classes marked for both push and pull handling.
     """
     compress()
     session = core.Session()
     cts = session.query(ContentType).all()
     ops = session.query(Operation).filter(Operation.version_id == None).all()
     def getclass(ct_id):
-        return core.synched_models.get(
+        class_ = core.synched_models.get(
             maybe(lookup(attr('content_type_id') == ct_id, cts),
                   attr('model_name'),
                   None),
             None)
+        if class_ is None: return None
+        if class_ not in core.pulled_models or class_ not in core.pushed_models:
+            return None
+        return class_
     triads = [
         (c, op.row_id, op.command)
         for c, op in ((getclass(op.content_type_id), op) for op in ops)

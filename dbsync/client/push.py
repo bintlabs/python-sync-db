@@ -18,7 +18,8 @@ class PushRejected(Exception): pass
 @core.with_transaction()
 def push(push_url, extra_data=None,
          encode=None, decode=None, headers=None, session=None):
-    """Attempts a push to the server. Returns the response body.
+    """
+    Attempts a push to the server. Returns the response body.
 
     Additional data can be passed to the request by giving
     *extra_data*, a dictionary of values.
@@ -32,7 +33,8 @@ def push(push_url, extra_data=None,
 
     By default, the *encode* function is ``json.dumps``, the *decode*
     function is ``json.loads``, and the *headers* are appropriate HTTP
-    headers for JSON."""
+    headers for JSON.
+    """
     assert isinstance(push_url, basestring), "push url must be a string"
     assert bool(push_url), "push url can't be empty"
     if extra_data is not None:

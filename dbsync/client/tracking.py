@@ -3,6 +3,7 @@ Listeners to SQLAlchemy events to keep track of CUD operations.
 """
 
 import logging
+import inspect
 from collections import deque
 
 from sqlalchemy import event
@@ -17,7 +18,7 @@ _operations_queue = deque()
 
 
 def flush_operations(_):
-    """Flush operations after a commit has been issued."""
+    "Flush operations after a commit has been issued."
     if not _operations_queue or not core.listening: return
     session = core.Session()
     while _operations_queue:
@@ -29,7 +30,7 @@ def flush_operations(_):
 
 
 def empty_queue(*_):
-    """Empty the operations queue."""
+    "Empty the operations queue."
     if not core.listening: return
     while _operations_queue:
         _operations_queue.pop()
@@ -50,7 +51,7 @@ def get_ct(tname, session):
 
 
 def make_listener(command):
-    """Builds a listener for the given command (i, u, d)."""
+    "Builds a listener for the given command (i, u, d)."
     def listener(mapper, connection, target):
         if not core.listening: return
         if command == 'u' and not core.SessionClass.object_session(target).\
@@ -74,11 +75,11 @@ def make_listener(command):
     return listener
 
 
-def track(model):
-    """Adds an ORM class to the list of synchronized classes.
-
-    It can be used as a class decorator. This will also install
-    listeners to keep track of CUD operations for the given model."""
+def _start_tracking(model, directions):
+    if 'pull' in directions:
+        core.pulled_models.add(model)
+    if 'push' in directions:
+        core.pushed_models.add(model)
     if model.__name__ in core.synched_models:
         return model
     core.synched_models[model.__name__] = model
@@ -86,6 +87,28 @@ def track(model):
     event.listen(model, 'after_update', make_listener('u'))
     event.listen(model, 'after_delete', make_listener('d'))
     return model
+
+
+def track(*directions):
+    """
+    Adds an ORM class to the list of synchronized classes.
+
+    It can be used as a class decorator. This will also install
+    listeners to keep track of CUD operations for the given model.
+
+    *directions* are optional arguments of values in ('push', 'pull')
+    that can restrict the way dbsync handles the class during those
+    procedures. If not given, both values are assumed. If only one of
+    them is given, the other procedure will ignore the tracked class.
+    """
+    valid = ('push', 'pull')
+    if not directions:
+        return lambda model: _start_tracking(model, valid)
+    if len(directions) == 1 and inspect.isclass(directions[0]):
+        return _start_tracking(directions[0], valid)
+    assert all(d in valid for d in directions), \
+        "track only accepts the arguments: {0}".format(', '.join(valid))
+    return lambda model: _start_tracking(model, directions)
 
 
 event.listen(GlobalSession, 'after_commit', flush_operations)

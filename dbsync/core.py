@@ -55,6 +55,14 @@ def get_engine():
 synched_models = {}
 
 
+#: Set of classes in *synched_models* that are subject to pull handling.
+pulled_models = set()
+
+
+#: Set of classes in *synched_models* that are subject to push handling.
+pushed_models = set()
+
+
 #: Extensions to tracked models.
 model_extensions = {}
 

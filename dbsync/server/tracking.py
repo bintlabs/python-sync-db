@@ -7,6 +7,7 @@ connected nodes capable of synchronizing their data.
 """
 
 import logging
+import inspect
 import datetime
 
 from sqlalchemy import event
@@ -16,7 +17,7 @@ from dbsync.models import Operation, ContentType, Version
 
 
 def make_listener(command):
-    """Builds a listener for the given command (i, u, d)."""
+    "Builds a listener for the given command (i, u, d)."
     def listener(mapper, connection, target):
         if not core.listening: return
         session = core.Session()
@@ -42,11 +43,11 @@ def make_listener(command):
     return listener
 
 
-def track(model):
-    """Adds an ORM class to the list of synchronized classes.
-
-    It can be used as a class decorator. This will also install
-    listeners to keep track of CUD operations for the given model."""
+def _start_tracking(model, directions):
+    if 'pull' in directions:
+        core.pulled_models.add(model)
+    if 'push' in directions:
+        core.pushed_models.add(model)
     if model.__name__ in core.synched_models:
         return model
     core.synched_models[model.__name__] = model
@@ -54,3 +55,25 @@ def track(model):
     event.listen(model, 'after_update', make_listener('u'))
     event.listen(model, 'after_delete', make_listener('d'))
     return model
+
+
+def track(*directions):
+    """
+    Adds an ORM class to the list of synchronized classes.
+
+    It can be used as a class decorator. This will also install
+    listeners to keep track of CUD operations for the given model.
+
+    *directions* are optional arguments of values in ('push', 'pull')
+    that can restrict the way dbsync handles the class during those
+    handlers. If not given, both values are assumed. If only one of
+    them is given, the other handler will ignore the tracked class.
+    """
+    valid = ('push', 'pull')
+    if not directions:
+        return lambda model: _start_tracking(model, valid)
+    if len(directions) == 1 and inspect.isclass(directions[0]):
+        return _start_tracking(directions[0], valid)
+    assert all(d in valid for d in directions), \
+        "track only accepts the arguments: {0}".format(', '.join(valid))
+    return lambda model: _start_tracking(model, directions)

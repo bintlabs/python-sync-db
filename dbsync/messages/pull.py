@@ -13,21 +13,27 @@ from dbsync.utils import (
     query_model)
 from dbsync.lang import *
 
-from dbsync.core import Session, synched_models, get_latest_version_id
+from dbsync.core import (
+    Session,
+    synched_models,
+    pulled_models,
+    get_latest_version_id)
 from dbsync.models import Operation, Version, ContentType
 from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
 
 class PullMessage(BaseMessage):
-    """A pull message.
+    """
+    A pull message.
 
     A pull message can be queried over by version, operation or model,
     and can be filtered multiple times.
 
     It can be instantiated from a raw data dictionary, or can be made
     empty and filled later with specific methods (``add_version``,
-    ``add_operation``, ``add_object``)."""
+    ``add_operation``, ``add_object``).
+    """
 
     #: Datetime of creation.
     created = None
@@ -39,11 +45,13 @@ class PullMessage(BaseMessage):
     versions = None
 
     def __init__(self, raw_data=None, extra_data=None):
-        """*raw_data* must be a python dictionary, normally the
+        """
+        *raw_data* must be a python dictionary, normally the
         product of JSON decoding. If not given, the message will be
         empty and should be filled with the appropriate methods
         (add_*).
-        *extra_data*: dict with additional information is needed"""
+        *extra_data*: dict with additional information is needed
+        """
         super(PullMessage, self).__init__(raw_data)
         self.extra_data = extra_data
         if raw_data is not None:
@@ -61,7 +69,7 @@ class PullMessage(BaseMessage):
                             imap(decode_dict(Version), data['versions']))
 
     def query(self, model):
-        """Returns a query object for this message."""
+        "Returns a query object for this message."
         return MessageQuery(
             model,
             dict(self.payload, **{
@@ -69,7 +77,8 @@ class PullMessage(BaseMessage):
                     'models.Version': self.versions}))
 
     def to_json(self):
-        """Returns a JSON-friendly python dictionary. Structure::
+        """
+        Returns a JSON-friendly python dictionary. Structure::
 
             created: datetime,
             operations: list of operations,
@@ -87,7 +96,8 @@ class PullMessage(BaseMessage):
         return encoded
 
     def add_operation(self, op, swell=True, session=None):
-        """Adds an operation to the message, including the required
+        """
+        Adds an operation to the message, including the required
         object if it's possible to include it.
 
         If *swell* is given and set to ``False``, the operation and
@@ -103,12 +113,15 @@ class PullMessage(BaseMessage):
         which case the internal state of the message won't be affected
         (i.e. it won't end in an inconsistent state).
 
-        DEPRECATED in favor of `fill_for`"""
+        DEPRECATED in favor of `fill_for`
+        """
         mname = op.content_type.model_name
         model = synched_models.get(mname, None)
         if model is None:
             raise ValueError("operation linked to model %s "\
                                  "which isn't being tracked" % mname)
+        if model not in pulled_models:
+            return self
         closeit = session is None
         session = session if not closeit else Session()
         obj = query_model(session, model).\
@@ -130,14 +143,16 @@ class PullMessage(BaseMessage):
         return self
 
     def add_version(self, v, swell=True, session=None):
-        """Adds a version to the message, and all associated
+        """
+        Adds a version to the message, and all associated
         operations and objects.
 
         This method will either fail and leave the message instance as
         if nothing had happened, or it will succeed and return the
         modified message.
 
-        DEPRECATED in favor of `fill_for`"""
+        DEPRECATED in favor of `fill_for`
+        """
         for op in v.operations:
             if op.content_type.model_name not in synched_models:
                 raise ValueError("version includes operation linked "\
@@ -183,6 +198,7 @@ class PullMessage(BaseMessage):
                     session.close()
                     raise ValueError("operation linked to model %s "\
                                          "which isn't being tracked" % mname)
+                if model not in pulled_models: continue
                 obj = query_model(session, model).\
                     filter_by(**{get_pk(model): op.row_id}).first() \
                     if op.command != 'd' else None
@@ -241,13 +257,13 @@ class PullRequestMessage(BaseMessage):
             data['latest_version_id'])
 
     def query(self, model):
-        """Returns a query object for this message."""
+        "Returns a query object for this message."
         return MessageQuery(
             model,
             dict(self.payload, **{'models.Operation': self.operations}))
 
     def to_json(self):
-        """Returns a JSON-friendly python dictionary."""
+        "Returns a JSON-friendly python dictionary."
         encoded = super(PullRequestMessage, self).to_json()
         encoded['operations'] = map(encode_dict(Operation),
                                     imap(properties_dict, self.operations))
@@ -267,12 +283,15 @@ class PullRequestMessage(BaseMessage):
         if model is None:
             raise ValueError("operation linked to model %s "\
                                  "which isn't being tracked" % mname)
+        if model not in pulled_models: return self
         self.operations.append(op)
         return self
 
     def add_unversioned_operations(self, session=None):
-        """Adds all unversioned operations to this message and
-        required objects."""
+        """
+        Adds all unversioned operations to this message and
+        required objects.
+        """
         closeit = session is None
         session = Session() if closeit else session
         operations = session.query(Operation).\
