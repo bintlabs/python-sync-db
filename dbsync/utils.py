@@ -118,3 +118,20 @@ def query_model(session, sa_class, only_pk=False):
             if isinstance(prop, ColumnProperty)
             if prop.key != pk)
     return session.query(sa_class).options(*opts)
+
+
+class EventRegister(object):
+
+    def __init__(self):
+        self._listeners = []
+
+    def __iter__(self):
+        for listener in self._listeners:
+            yield listener
+
+    def listen(self, listener):
+        "Register a listener. May be used as a decorator."
+        assert inspect.isroutine(listener), "invalid listener"
+        if listener not in self._listeners:
+            self._listeners.append(listener)
+        return listener

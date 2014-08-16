@@ -24,7 +24,8 @@ from dbsync.utils import (
     properties_dict,
     column_properties,
     get_pk,
-    query_model)
+    query_model,
+    EventRegister)
 from dbsync import core
 from dbsync.models import (
     Version,
@@ -138,6 +139,10 @@ def handle_pull(data, extra_data=None):
 class PushRejected(Exception): pass
 
 
+#: Callbacks receive the session, the message, and the content_types.
+before_push = EventRegister()
+
+
 @core.with_listening(False)
 @core.with_transaction()
 def handle_push(data, session=None):
@@ -166,6 +171,8 @@ def handle_push(data, session=None):
         raise PushRejected("message isn't properly signed")
 
     content_types = session.query(ContentType).all()
+    for listener in before_push:
+        listener(session, message, content_types)
 
     # I) detect unique constraint conflicts and resolve them if possible
     unique_conflicts = find_unique_conflicts(message, content_types, session)
