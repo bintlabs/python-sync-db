@@ -83,6 +83,8 @@ def _start_tracking(model, directions):
     if model.__name__ in core.synched_models:
         return model
     core.synched_models[model.__name__] = model
+    if 'push' not in directions:
+        return model # don't track operations for pull-only models
     event.listen(model, 'after_insert', make_listener('i'))
     event.listen(model, 'after_update', make_listener('u'))
     event.listen(model, 'after_delete', make_listener('d'))
