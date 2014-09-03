@@ -11,6 +11,7 @@ from dbsync.server.handlers import (
     handle_register,
     handle_pull,
     before_push,
+    after_push,
     handle_push,
     handle_repair,
     handle_query)

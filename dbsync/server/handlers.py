@@ -141,6 +141,7 @@ class PushRejected(Exception): pass
 
 #: Callbacks receive the session, the message, and the content_types.
 before_push = EventRegister()
+after_push = EventRegister()
 
 
 @core.with_listening(False)
@@ -220,6 +221,9 @@ def handle_push(data, session=None):
         session.add(new_op)
         new_op.version = version
         session.flush()
+
+    for listener in after_push:
+        listener(session, message, content_types)
 
     # return the new version id back to the node
     return {'new_version_id': version.version_id}
