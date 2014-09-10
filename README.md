@@ -2,7 +2,7 @@ dbsync
 ======
 
 A python library for centralized database synchronization, built over
-SQLAlchemy's ORM.
+[SQLAlchemy's ORM](http://docs.sqlalchemy.org/en/rel_0_9/orm/tutorial.html).
 
 The library aims to enable applications to function offline when their
 internet connection is lost, by using a local database and providing a

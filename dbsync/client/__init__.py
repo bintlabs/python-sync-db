@@ -37,3 +37,8 @@ def set_default_decoder(dec):
 def set_default_headers(hhs):
     assert isinstance(hhs, dict), "headers must be a dictionary"
     net.default_headers = hhs
+
+
+def set_default_timeout(t):
+    assert isinstance(t, (int, long, float)), "timeout must be a number"
+    net.default_timeout = t

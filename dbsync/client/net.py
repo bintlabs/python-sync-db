@@ -26,6 +26,8 @@ default_decoder = json.loads
 default_headers = {"Content-Type": "application/json",
                    "Accept": "application/json"}
 
+default_timeout = 1
+
 
 def _defaults(encode, decode, headers):
     e = encode if not encode is None else default_encoder
@@ -43,7 +45,8 @@ def _defaults(encode, decode, headers):
 def post_request(server_url, json_dict,
                  encode=None, decode=None, headers=None,
                  monitor=None):
-    """Sends a POST request to *server_url* with data *json_dict* and
+    """
+    Sends a POST request to *server_url* with data *json_dict* and
     returns a trio of (code, reason, body).
 
     *encode* is a function that transforms a python dictionary into a
@@ -61,8 +64,9 @@ def post_request(server_url, json_dict,
     response in bytes, and the current amount received. If without
     issue, *monitor* should receive the pair (size, 0) at first, and
     the pair (size, size) when finished. The size will be ``None`` if
-    it's unknown, in which case the final pair would be
-    (None, actual_size)."""
+    it's unknown, in which case the final pair would be (None,
+    actual_size).
+    """
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
@@ -70,7 +74,8 @@ def post_request(server_url, json_dict,
     stream = inspect.isroutine(monitor)
     try:
         r = requests.post(server_url, data=enc(json_dict),
-                          headers=hhs or None, stream=stream)
+                          headers=hhs or None, stream=stream,
+                          timeout=default_timeout)
         response = None
         if stream:
             total = r.headers.get('content-length', None)
@@ -109,12 +114,14 @@ def post_request(server_url, json_dict,
 def get_request(server_url, data=None,
                 encode=None, decode=None, headers=None,
                 monitor=None):
-    """Sends a GET request to *server_url*. If *data* is to be added,
-    it should be a python dictionary with simple pairs suitable for
-    url encoding. Returns a trio of (code, reason, body).
+    """
+    Sends a GET request to *server_url*. If *data* is to be added, it
+    should be a python dictionary with simple pairs suitable for url
+    encoding. Returns a trio of (code, reason, body).
 
     Read the docstring for ``post_request`` for information on the
-    rest."""
+    rest.
+    """
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
@@ -122,7 +129,8 @@ def get_request(server_url, data=None,
     stream = inspect.isroutine(monitor)
     try:
         r = requests.get(server_url, params=data,
-                         headers=hhs or None, stream=stream)
+                         headers=hhs or None, stream=stream,
+                         timeout=default_timeout)
         response = None
         if stream:
             total = r.headers.get('content-length', None)
@@ -159,14 +167,16 @@ def get_request(server_url, data=None,
 
 
 def head_request(server_url):
-    """Sends a HEAD request to *server_url*.
+    """
+    Sends a HEAD request to *server_url*.
 
-    Returns a pair of (code, reason)."""
+    Returns a pair of (code, reason).
+    """
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
     try:
-        r = requests.head(server_url)
+        r = requests.head(server_url, timeout=default_timeout)
         return (r.status_code, r.reason)
 
     except requests.exceptions.RequestException as e:
