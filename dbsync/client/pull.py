@@ -55,7 +55,8 @@ def update_local_id(old_id, new_id, ct, content_types, session):
     model = core.synched_models.get(ct.model_name)
     if model is None:
         raise ValueError("can't find model for content type {0}".format(ct))
-    obj = query_model(session, model).\ # must load fully, don't know yet why
+    # must load fully, don't know yet why
+    obj = query_model(session, model).\
         filter_by(**{get_pk(model): old_id}).first()
     setattr(obj, get_pk(model), new_id)
 
