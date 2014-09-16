@@ -99,7 +99,9 @@ class UniqueConstraintError(Exception):
     def __str__(self): return repr(self)
 
 
-def merge(pull_message, session):
+@core.with_listening(False)
+@core.with_transaction()
+def merge(pull_message, session=None):
     """
     Merges a message from the server with the local database.
 
@@ -253,10 +255,10 @@ class BadResponseError(Exception):
     pass
 
 
-@core.with_listening(False)
-@core.with_transaction()
 def pull(pull_url, extra_data=None,
-         encode=None, decode=None, headers=None, monitor=None, session=None):
+         encode=None, decode=None, headers=None, monitor=None,
+         include_extensions=True,
+         merge_mutex=None):
     """
     Attempts a pull from the server. Returns the response body.
 
@@ -273,6 +275,13 @@ def pull(pull_url, extra_data=None,
 
     *monitor* should be a routine that receives a dictionary with
     information of the state of the request and merge procedure.
+
+    *include_extensions* dictates whether the extension functions will
+    be called during the merge or not. Default is ``True``.
+
+    *merge_mutex*, if provided, is an object that complies with
+    python's _with_ protocol and that will be used to wrap the merge
+    call.
     """
     assert isinstance(pull_url, basestring), "pull url must be a string"
     assert bool(pull_url), "pull url can't be empty"
@@ -280,7 +289,7 @@ def pull(pull_url, extra_data=None,
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
     compress()
     request_message = PullRequestMessage()
-    request_message.add_unversioned_operations(session)
+    request_message.add_unversioned_operations()
     data = request_message.to_json()
     data.update({'extra_data': extra_data or {}})
 
@@ -311,7 +320,11 @@ def pull(pull_url, extra_data=None,
         monitor({
             'status': "merging",
             'operations': len(message.operations)})
-    merge(message, session)
+    if merge_mutex is not None:
+        with merge_mutex:
+            merge(message, include_extensions=include_extensions)
+    else:
+        merge(message, include_extensions=include_extensions)
     if monitor:
         monitor({'status': "done"})
     # return the response for the programmer to do what she wants

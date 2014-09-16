@@ -112,7 +112,7 @@ def handle_register(user_id=None, node_id=None, session=None):
 class PullRejected(Exception): pass
 
 
-def handle_pull(data, extra_data=None):
+def handle_pull(data, extra_data=None, swell=False, include_extensions=True):
     """
     Handle the pull request and return a dictionary object to be sent
     back to the node.
@@ -132,7 +132,10 @@ def handle_pull(data, extra_data=None):
         raise PullRejected("request object isn't a valid PullRequestMessage", data)
 
     message = PullMessage(extra_data=extra)
-    message.fill_for(request_message)
+    message.fill_for(
+        request_message,
+        swell=swell,
+        include_extensions=include_extensions)
     return message.to_json()
 
 

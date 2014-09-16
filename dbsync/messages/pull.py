@@ -170,7 +170,7 @@ class PullMessage(BaseMessage):
             session.close()
         return self
 
-    def fill_for(self, request):
+    def fill_for(self, request, swell=False, include_extensions=True):
         """
         Fills this pull message (response) with versions, operations
         and objects, for the given request (PullRequestMessage).
@@ -180,7 +180,11 @@ class PullMessage(BaseMessage):
         the client node. This effectively means detecting the
         'reversed_dependency_conflicts'
         (:func:`client.conflicts.find_reversed_dependency_conflicts`)
-        on the server.
+        on the server. This 'smart filling' is disabled if *swell* is
+        ``True``.
+
+        *include_extensions* dictates whether the pull message will
+        include model extensions or not.
         """
         assert isinstance(request, PullRequestMessage), "invalid request"
         session = Session()
@@ -204,15 +208,17 @@ class PullMessage(BaseMessage):
                     if op.command != 'd' else None
                 self.operations.append(op)
                 if obj is None: continue
-                self.add_object(obj)
+                self.add_object(obj, include_extensions=include_extensions)
                 # add parent objects to resolve conflicts in merge
                 for parent in parent_objects(obj, synched_models.values(),
                                              session, only_pk=True):
-                    if any(local_op.references(parent, cts, synched_models)
-                           for local_op in request.operations
-                           if local_op.command == 'd'):
+                    if swell or \
+                            any(local_op.references(parent, cts, synched_models)
+                                for local_op in request.operations
+                                if local_op.command == 'd'):
                         session.expire(parent) # load all attributes at once
-                        self.add_object(parent)
+                        self.add_object(
+                            parent, include_extensions=include_extensions)
         session.close()
         return self
 

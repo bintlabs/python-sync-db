@@ -21,6 +21,8 @@ from dbsync.messages.base import BaseMessage
 from dbsync.client.net import get_request
 
 
+@core.with_listening(False)
+@core.with_transaction()
 def repair_database(message, latest_version_id, session=None):
     if not isinstance(message, BaseMessage):
         raise TypeError("need an instance of dbsync.messages.base.BaseMessage "\
@@ -84,8 +86,9 @@ def repair(repair_url, include_extensions=True, extra_data=None,
             "response object isn't a valid BaseMessage", response)
 
     if monitor: monitor({'status': "repairing"})
-    core.with_listening(False)(
-        core.with_transaction(include_extensions=include_extensions)(
-            repair_database))(message, response.get("latest_version_id", None))
+    repair_database(
+        message,
+        response.get("latest_version_id", None),
+        include_extensions=include_extensions)
     if monitor: monitor({'status': "done"})
     return response
