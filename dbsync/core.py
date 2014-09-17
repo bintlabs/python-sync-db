@@ -162,12 +162,12 @@ def with_transaction(include_extensions=True):
     def wrapper(proc):
         @wraps(proc)
         def wrapped(*args, **kwargs):
-            include_extensions = kwargs.pop('include_extensions',
-                                            include_extensions)
+            extensions = kwargs.pop('include_extensions',
+                                    include_extensions)
             session = Session()
             previous_state = dialects.begin_transaction(session)
             added = []
-            if include_extensions:
+            if extensions:
                 track_added = lambda fn: lambda o, **kws: begin(added.append(o),
                                                                 fn(o, **kws))
                 session.add = track_added(session.add)
