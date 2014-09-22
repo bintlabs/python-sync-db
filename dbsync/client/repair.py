@@ -47,8 +47,10 @@ class BadResponseError(Exception): pass
 
 
 def repair(repair_url, include_extensions=True, extra_data=None,
-           encode=None, decode=None, headers=None, monitor=None):
-    """Fetches the server database and replaces the local one with it.
+           encode=None, decode=None, headers=None, timeout=None,
+           monitor=None):
+    """
+    Fetches the server database and replaces the local one with it.
 
     *include_extensions* includes or excludes extension fields from
     the operation.
@@ -57,7 +59,8 @@ def repair(repair_url, include_extensions=True, extra_data=None,
 
     By default, the *encode* function is ``json.dumps``, the *decode*
     function is ``json.loads``, and the *headers* are appropriate HTTP
-    headers for JSON."""
+    headers for JSON.
+    """
     assert isinstance(repair_url, basestring), "repair url must be a string"
     assert bool(repair_url), "repair url can't be empty"
     if extra_data is not None:
@@ -67,7 +70,7 @@ def repair(repair_url, include_extensions=True, extra_data=None,
     data.update(extra_data or {})
 
     code, reason, response = get_request(
-        repair_url, data, encode, decode, headers, monitor)
+        repair_url, data, encode, decode, headers, timeout, monitor)
 
     if (code // 100 != 2):
         if monitor: monitor({'status': "error", 'reason': reason.lower()})

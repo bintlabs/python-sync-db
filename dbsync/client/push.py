@@ -17,7 +17,8 @@ class PushRejected(Exception): pass
 
 @core.with_transaction()
 def push(push_url, extra_data=None,
-         encode=None, decode=None, headers=None, session=None):
+         encode=None, decode=None, headers=None, timeout=None,
+         session=None):
     """
     Attempts a push to the server. Returns the response body.
 
@@ -48,7 +49,7 @@ def push(push_url, extra_data=None,
     data.update({'extra_data': extra_data or {}})
 
     code, reason, response = post_request(
-        push_url, data, encode, decode, headers)
+        push_url, data, encode, decode, headers, timeout)
 
     if (code // 100 != 2) or response is None:
         raise PushRejected(code, reason, response)

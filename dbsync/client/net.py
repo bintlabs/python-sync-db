@@ -29,7 +29,7 @@ default_headers = {"Content-Type": "application/json",
 default_timeout = 1
 
 
-def _defaults(encode, decode, headers):
+def _defaults(encode, decode, headers, timeout):
     e = encode if not encode is None else default_encoder
     if not inspect.isroutine(e):
         raise ValueError("encoder must be a function", e)
@@ -39,11 +39,16 @@ def _defaults(encode, decode, headers):
     h = headers if not headers is None else default_headers
     if h and not isinstance(h, dict):
         raise ValueError("headers must be False or a python dictionary", h)
-    return (e, d, h)
+    t = timeout if not timeout is None else default_timeout
+    if not isinstance(t, (int, long, float)):
+        raise ValueError("timeout must be a number")
+    if t <= 0:
+        t = None # Non-positive values are interpreted as no timeout
+    return (e, d, h, t)
 
 
 def post_request(server_url, json_dict,
-                 encode=None, decode=None, headers=None,
+                 encode=None, decode=None, headers=None, timeout=None,
                  monitor=None):
     """
     Sends a POST request to *server_url* with data *json_dict* and
@@ -59,23 +64,23 @@ def post_request(server_url, json_dict,
 
     *headers* is a python dictionary with headers to send.
 
+    *timeout* is the number of seconds to wait for a response.
+
     *monitor* is a routine that gets called for each chunk of the
-    response received, and is given two arguments: the size of the
-    response in bytes, and the current amount received. If without
-    issue, *monitor* should receive the pair (size, 0) at first, and
-    the pair (size, size) when finished. The size will be ``None`` if
-    it's unknown, in which case the final pair would be (None,
-    actual_size).
+    response received, and is given a dictionary with information. The
+    key 'status' will always be in the dictionary, and other entries
+    will contain additional information. Check the source code to see
+    the variations.
     """
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
-    enc, dec, hhs = _defaults(encode, decode, headers)
+    enc, dec, hhs, tout = _defaults(encode, decode, headers, timeout)
     stream = inspect.isroutine(monitor)
     try:
         r = requests.post(server_url, data=enc(json_dict),
                           headers=hhs or None, stream=stream,
-                          timeout=default_timeout)
+                          timeout=tout)
         response = None
         if stream:
             total = r.headers.get('content-length', None)
@@ -112,7 +117,7 @@ def post_request(server_url, json_dict,
 
 
 def get_request(server_url, data=None,
-                encode=None, decode=None, headers=None,
+                encode=None, decode=None, headers=None, timeout=None,
                 monitor=None):
     """
     Sends a GET request to *server_url*. If *data* is to be added, it
@@ -125,12 +130,12 @@ def get_request(server_url, data=None,
     if not server_url.startswith("http://") and \
             not server_url.startswith("https://"):
         server_url = "http://" + server_url
-    enc, dec, hhs = _defaults(encode, decode, headers)
+    enc, dec, hhs, tout = _defaults(encode, decode, headers, timeout)
     stream = inspect.isroutine(monitor)
     try:
         r = requests.get(server_url, params=data,
                          headers=hhs or None, stream=stream,
-                         timeout=default_timeout)
+                         timeout=tout)
         response = None
         if stream:
             total = r.headers.get('content-length', None)

@@ -256,7 +256,7 @@ class BadResponseError(Exception):
 
 
 def pull(pull_url, extra_data=None,
-         encode=None, decode=None, headers=None, monitor=None,
+         encode=None, decode=None, headers=None, monitor=None, timeout=None,
          include_extensions=True,
          merge_mutex=None):
     """
@@ -294,7 +294,7 @@ def pull(pull_url, extra_data=None,
     data.update({'extra_data': extra_data or {}})
 
     code, reason, response = post_request(
-        pull_url, data, encode, decode, headers, monitor)
+        pull_url, data, encode, decode, headers, timeout, monitor)
     if (code // 100 != 2):
         if monitor:
             monitor({'status': "error", 'reason': reason.lower()})

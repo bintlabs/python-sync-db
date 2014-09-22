@@ -52,26 +52,12 @@ def encode_dict(class_):
                               if k in encodings)
 
 
-def decode_date(value):
-    "TODO remove deprecated, backwards-compatible decoder"
-    if isinstance(value, list):
-        return datetime.date(*value)
-    return datetime.date.fromordinal(value)
-
-def decode_datetime(value):
-    "TODO remove deprecated, backwards-compatible decoder"
-    if isinstance(value, list):
-        return datetime.datetime(*value)
-    return datetime.datetime.fromtimestamp(value)
-
 def _decode_table(type_):
     "*type_* is a SQLAlchemy data type."
     if isinstance(type_, types.Date):
-        return decode_date
-        # return partial(apply, datetime.date)
+        return partial(apply, datetime.date)
     elif isinstance(type_, types.DateTime):
-        return decode_datetime
-        # return partial(apply, datetime.datetime)
+        return partial(apply, datetime.datetime)
     elif isinstance(type_, types.Time):
         return partial(apply, datetime.time)
     elif isinstance(type_, types.LargeBinary):

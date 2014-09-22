@@ -14,7 +14,8 @@ class BadResponseError(Exception): pass
 
 
 def query_server(query_url,
-                 encode=None, decode=None, headers=None, monitor=None):
+                 encode=None, decode=None, headers=None, timeout=None,
+                 monitor=None):
     """Queries the server for a single model's dataset.
 
     This procedure returns a procedure that receives the class and
@@ -25,7 +26,7 @@ def query_server(query_url,
                          for key, value in args.iteritems()))
 
         code, reason, response = get_request(
-            query_url, data, encode, decode, headers, monitor)
+            query_url, data, encode, decode, headers, timeout, monitor)
 
         if (code // 100 != 2):
             if monitor: monitor({'status': "error", 'reason': reason.lower()})
