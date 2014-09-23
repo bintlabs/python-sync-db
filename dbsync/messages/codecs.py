@@ -17,7 +17,7 @@ def types_dict(class_):
     dict_ = bare_types_dict(class_)
     extensions = core.model_extensions.get(class_.__name__, {})
     for field, ext in extensions.iteritems():
-        type_, _, _ = ext
+        type_, _, _, _ = ext
         dict_[field] = type_
     return dict_
 

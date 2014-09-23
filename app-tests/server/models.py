@@ -7,7 +7,7 @@ import dbsync
 from dbsync import server
 
 
-engine = create_engine("mysql://root:@localhost/dbsync_apptest", echo=True)
+engine = create_engine("mysql://root:11235813@localhost/dbsync_apptest", echo=True)
 Session = sessionmaker(bind=engine)
 
 
@@ -35,9 +35,16 @@ def load_extra(city):
     return "-".join(name_pool) + "-" + city.name
 
 def save_extra(city, data):
+    print "SAVING -------------------"
     print city.name, data
+    print "SAVED  -------------------"
 
-server.extend(City, "extra", String, load_extra, save_extra)
+def delete_extra(old_city, new_city):
+    print "DELETING -----------------"
+    print old_city.name, (new_city.name if new_city is not None else None)
+    print "DELETED  -----------------"
+
+server.extend(City, "extra", String, load_extra, save_extra, delete_extra)
 
 
 @server.track

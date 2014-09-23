@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
-from dbsync.utils import get_pk
+from dbsync.utils import get_pk, query_model, copy
 from dbsync.models import ContentType, Operation, Version
 from dbsync import dialects
 from dbsync.logs import get_logger
@@ -67,7 +67,7 @@ pushed_models = set()
 model_extensions = {}
 
 
-def extend(model, fieldname, fieldtype, loadfn, savefn):
+def extend(model, fieldname, fieldtype, loadfn, savefn, deletefn=None):
     """
     Extends *model* with a field of name *fieldname* and type
     *fieldtype*.
@@ -83,7 +83,14 @@ def extend(model, fieldname, fieldtype, loadfn, savefn):
     accept the instance of the model and the field's value. It's
     return value is ignored.
 
-    Proposal: https://gist.github.com/kklingenberg/7336576
+    *deletefn* is a function called to revert the side effects of
+    *savefn* for old values. It gets called after an update on the
+    object with the old object's values, or after a delete. *deletefn*
+    is optional, and if given it should be a function of two
+    arguments: the first is the object in the previous state, the
+    second is the object in the current state.
+
+    Original proposal: https://gist.github.com/kklingenberg/7336576
     """
     def check(cond, message): assert cond, message
     check(inspect.isclass(model), "model must be a mapped class")
@@ -94,10 +101,22 @@ def extend(model, fieldname, fieldtype, loadfn, savefn):
               format(model.__name__, fieldname))
     check(inspect.isroutine(loadfn), "load function must be a callable")
     check(inspect.isroutine(savefn), "save function must be a callable")
+    check(deletefn is None or inspect.isroutine(deletefn),
+          "delete function must be a callable")
     extensions = model_extensions.get(model.__name__, {})
     type_ = fieldtype if not inspect.isclass(fieldtype) else fieldtype()
-    extensions[fieldname] = (type_, loadfn, savefn)
+    extensions[fieldname] = (type_, loadfn, savefn, deletefn)
     model_extensions[model.__name__] = extensions
+
+
+def _has_extensions(obj):
+    return bool(model_extensions.get(type(obj).__name__, {}))
+
+def _has_delete_functions(obj):
+    return any(
+        delfn is not None
+        for t, loadfn, savefn, delfn in model_extensions.get(
+            type(obj).__name__, {}).itervalues())
 
 
 def save_extensions(obj):
@@ -107,12 +126,27 @@ def save_extensions(obj):
     """
     extensions = model_extensions.get(type(obj).__name__, {})
     for field, ext in extensions.iteritems():
-        _, _, savefn = ext
-        # Prevent infinite push loops from nodes. Ugly, but works for now!!!!!
-        try:
-            savefn(obj, getattr(obj, field, None))
+        _, _, savefn, _ = ext
+        try: savefn(obj, getattr(obj, field, None))
         except:
             logger.warning(u"Couldn't save extension %s for object %s", field, obj)
+
+
+def delete_extensions(old_obj, new_obj):
+    """
+    Executes the delete procedures for the extensions of the given
+    object. *old_obj* is the object in the previous state, and
+    *new_obj* is the object in the current state (or ``None`` if the
+    object was deleted).
+    """
+    extensions = model_extensions.get(type(old_obj).__name__, {})
+    for field, ext in extensions.iteritems():
+        _, _, _, deletefn = ext
+        if deletefn is not None:
+            try: deletefn(old_obj, new_obj)
+            except:
+                logger.warning(
+                    u"Couldn't delete extension %s for object %s", field, new_obj)
 
 
 #: Toggled variable used to disable listening to operations momentarily.
@@ -151,6 +185,28 @@ def with_listening(enabled):
     return wrapper
 
 
+# Helper functions used to queue extension operations in a transaction.
+
+def _track_added(fn, added):
+    def tracked(o, **kws):
+        if _has_extensions(o): added.append(o)
+        return fn(o, **kws)
+    return tracked
+
+def _track_deleted(fn, deleted, session, always=False):
+    def tracked(o, **kws):
+        if _has_delete_functions(o):
+            if always: deleted.append((copy(o), None))
+            else:
+                prev = query_model(session, type(o)).filter_by(
+                    **{get_pk(o): getattr(o, get_pk(o), None)}).\
+                    first()
+                if prev is not None:
+                    deleted.append((copy(prev), o))
+        return fn(o, **kws)
+    return tracked
+
+
 def with_transaction(include_extensions=True):
     """
     Decorator for a procedure that uses a session and acts as an
@@ -167,11 +223,21 @@ def with_transaction(include_extensions=True):
             session = Session()
             previous_state = dialects.begin_transaction(session)
             added = []
+            deleted = []
             if extensions:
-                track_added = lambda fn: lambda o, **kws: begin(added.append(o),
-                                                                fn(o, **kws))
-                session.add = track_added(session.add)
-                session.merge = track_added(session.merge)
+                session.add = _track_deleted(
+                    _track_added(session.add, added),
+                    deleted,
+                    session)
+                session.merge = _track_deleted(
+                    _track_added(session.merge, added),
+                    deleted,
+                    session)
+                session.delete = _track_deleted(
+                    session.delete,
+                    deleted,
+                    session,
+                    always=True)
             result = None
             try:
                 kwargs.update({'session': session})
@@ -184,6 +250,7 @@ def with_transaction(include_extensions=True):
                 dialects.end_transaction(previous_state, session)
                 session.close()
                 raise
+            for old_obj, new_obj in deleted: delete_extensions(old_obj, new_obj)
             for obj in added: save_extensions(obj)
             return result
         return wrapped

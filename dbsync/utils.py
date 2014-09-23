@@ -72,6 +72,11 @@ def object_from_dict(class_, dict_):
     return obj
 
 
+def copy(obj):
+    "Returns a copy of the given object, not linked to a session."
+    return object_from_dict(type(obj), properties_dict(obj))
+
+
 def get_pk(sa_variant):
     "Returns the primary key name for the given mapped class or object."
     mapper = class_mapper(sa_variant) if inspect.isclass(sa_variant) \

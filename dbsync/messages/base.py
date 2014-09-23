@@ -153,7 +153,7 @@ class BaseMessage(object):
         properties = properties_dict(obj)
         if include_extensions:
             for field, ext in model_extensions.get(classname, {}).iteritems():
-                _, loadfn, _ = ext
+                _, loadfn, _, _ = ext
                 properties[field] = loadfn(obj)
         obj_set.add(ObjectType(
                 classname, getattr(obj, get_pk(class_)), **properties))
