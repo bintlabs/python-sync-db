@@ -129,7 +129,8 @@ def save_extensions(obj):
         _, _, savefn, _ = ext
         try: savefn(obj, getattr(obj, field, None))
         except:
-            logger.warning(u"Couldn't save extension %s for object %s", field, obj)
+            logger.exception(
+                u"Couldn't save extension %s for object %s", field, obj)
 
 
 def delete_extensions(old_obj, new_obj):
@@ -145,7 +146,7 @@ def delete_extensions(old_obj, new_obj):
         if deletefn is not None:
             try: deletefn(old_obj, new_obj)
             except:
-                logger.warning(
+                logger.exception(
                     u"Couldn't delete extension %s for object %s", field, new_obj)
 
 
