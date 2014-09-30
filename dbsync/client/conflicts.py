@@ -277,10 +277,15 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
 
             if all(value is None for value in remote_values): continue # Null value
             if pk_conflict is None: continue # No problem
-            if pk_conflict == op.row_id: continue
-            # Either two nodes created objects with the same
-            # unique value and same pk (if is_unversioned), or the
-            # object is the same
+            if pk_conflict == op.row_id:
+                if op.command == 'i':
+                    # Two nodes created objects with the same unique
+                    # value and same pk
+                    errors.append(
+                        {'model': type(obj_conflict),
+                         'pk': pk_conflict,
+                         'columns': unique_columns})
+                continue
 
             # if pk_conflict != op.row_id:
             remote_obj = pull_message.query(model).\
@@ -308,7 +313,7 @@ def find_unique_conflicts(pull_ops, unversioned_ops,
                     pass
             elif remote_obj is not None and is_unversioned:
                 # Two nodes created objects with the same unique
-                # values and pk. Human error.
+                # values. Human error.
                 errors.append(
                     {'model': type(obj_conflict),
                      'pk': pk_conflict,

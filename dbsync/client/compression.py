@@ -45,9 +45,6 @@ def _assert_operation_sequence(seq, session=None):
             logger.error(
                 u"Can't have anything after a delete operation in sequence. %s",
                 seq)
-            # repair the sequence
-            # if session is not None:
-                # map(session.delete, seq[:-1])
 
         if seq[0].command == 'i':
             warnings.warn(message)

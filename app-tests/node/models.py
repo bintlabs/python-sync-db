@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, create_engine
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import UniqueConstraint
 
@@ -48,7 +48,8 @@ class House(Base):
     address = Column(String, unique=True)
     city_id = Column(Integer, ForeignKey("city.id"))
 
-    city = relationship(City, backref="houses")
+    city = relationship(
+        City, backref=backref("houses", cascade='all, delete-orphan'))
 
     def __repr__(self):
         return u"<House id: {0}; address: {1}; city_id: {2}>".format(

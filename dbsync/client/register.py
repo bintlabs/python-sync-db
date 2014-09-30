@@ -71,10 +71,9 @@ def save_node(node_id, registered, register_user_id, secret):
     "Save node info into database without a server request."
     session = core.Session()
     node = Node(node_id=node_id,
-        registered=registered,
-        registry_user_id=register_user_id,
-        secret=secret)
-
+                registered=registered,
+                registry_user_id=register_user_id,
+                secret=secret)
     session.add(node)
     session.commit()
     session.close()

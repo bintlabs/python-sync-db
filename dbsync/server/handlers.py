@@ -112,26 +112,20 @@ def handle_register(user_id=None, node_id=None, session=None):
 class PullRejected(Exception): pass
 
 
-def handle_pull(data, extra_data=None, swell=False, include_extensions=True):
+def handle_pull(data, swell=False, include_extensions=True):
     """
     Handle the pull request and return a dictionary object to be sent
     back to the node.
 
     *data* must be a dictionary-like object, usually one obtained from
     decoding a JSON dictionary in the POST body.
-
-    *extra_data* Additional information to be sent back to client
     """
-    extra = dict((k, v) for k, v in extra_data.iteritems()
-                 if k not in ('operations', 'created', 'payload', 'versions')) \
-                 if extra_data is not None else {}
-
     try:
         request_message = PullRequestMessage(data)
     except KeyError:
         raise PullRejected("request object isn't a valid PullRequestMessage", data)
 
-    message = PullMessage(extra_data=extra)
+    message = PullMessage()
     message.fill_for(
         request_message,
         swell=swell,

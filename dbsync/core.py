@@ -244,13 +244,12 @@ def with_transaction(include_extensions=True):
                 kwargs.update({'session': session})
                 result = proc(*args, **kwargs)
                 session.commit()
-                dialects.end_transaction(previous_state, session)
-                session.close()
             except:
                 session.rollback()
+                raise
+            finally:
                 dialects.end_transaction(previous_state, session)
                 session.close()
-                raise
             for old_obj, new_obj in deleted: delete_extensions(old_obj, new_obj)
             for obj in added: save_extensions(obj)
             return result

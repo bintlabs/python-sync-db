@@ -44,16 +44,14 @@ class PullMessage(BaseMessage):
     #: List of versions being pulled.
     versions = None
 
-    def __init__(self, raw_data=None, extra_data=None):
+    def __init__(self, raw_data=None):
         """
         *raw_data* must be a python dictionary, normally the
         product of JSON decoding. If not given, the message will be
         empty and should be filled with the appropriate methods
         (add_*).
-        *extra_data*: dict with additional information is needed
         """
         super(PullMessage, self).__init__(raw_data)
-        self.extra_data = extra_data
         if raw_data is not None:
             self._build_from_raw(raw_data)
         else:
@@ -91,8 +89,6 @@ class PullMessage(BaseMessage):
                                     imap(properties_dict, self.operations))
         encoded['versions'] = map(encode_dict(Version),
                                   imap(properties_dict, self.versions))
-        if self.extra_data is not None:
-            encoded['extra_data'] = self.extra_data
         return encoded
 
     def add_operation(self, op, swell=True, session=None):
