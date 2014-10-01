@@ -257,8 +257,7 @@ class BadResponseError(Exception):
 
 def pull(pull_url, extra_data=None,
          encode=None, decode=None, headers=None, monitor=None, timeout=None,
-         include_extensions=True,
-         merge_mutex=None):
+         include_extensions=True):
     """
     Attempts a pull from the server. Returns the response body.
 
@@ -278,10 +277,6 @@ def pull(pull_url, extra_data=None,
 
     *include_extensions* dictates whether the extension functions will
     be called during the merge or not. Default is ``True``.
-
-    *merge_mutex*, if provided, is an object that complies with
-    python's _with_ protocol and that will be used to wrap the merge
-    call.
     """
     assert isinstance(pull_url, basestring), "pull url must be a string"
     assert bool(pull_url), "pull url can't be empty"
@@ -320,11 +315,7 @@ def pull(pull_url, extra_data=None,
         monitor({
             'status': "merging",
             'operations': len(message.operations)})
-    if merge_mutex is not None:
-        with merge_mutex:
-            merge(message, include_extensions=include_extensions)
-    else:
-        merge(message, include_extensions=include_extensions)
+    merge(message, include_extensions=include_extensions)
     if monitor:
         monitor({'status': "done"})
     # return the response for the programmer to do what she wants

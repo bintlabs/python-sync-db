@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, query_model, copy
+from dbsync.utils import get_pk, query_model, copy, null_mutex
 from dbsync.models import ContentType, Operation, Version
 from dbsync import dialects
 from dbsync.logs import get_logger
@@ -92,17 +92,16 @@ def extend(model, fieldname, fieldtype, loadfn, savefn, deletefn=None):
 
     Original proposal: https://gist.github.com/kklingenberg/7336576
     """
-    def check(cond, message): assert cond, message
-    check(inspect.isclass(model), "model must be a mapped class")
-    check(isinstance(fieldname, basestring) and bool(fieldname),
-          "field name must be a non-empty string")
-    check(not hasattr(model, fieldname),
-          "the model {0} already has the attribute {1}".\
-              format(model.__name__, fieldname))
-    check(inspect.isroutine(loadfn), "load function must be a callable")
-    check(inspect.isroutine(savefn), "save function must be a callable")
-    check(deletefn is None or inspect.isroutine(deletefn),
-          "delete function must be a callable")
+    assert inspect.isclass(model), "model must be a mapped class"
+    assert isinstance(fieldname, basestring) and bool(fieldname),\
+        "field name must be a non-empty string"
+    assert not hasattr(model, fieldname),\
+        "the model {0} already has the attribute {1}".\
+        format(model.__name__, fieldname)
+    assert inspect.isroutine(loadfn), "load function must be a callable"
+    assert inspect.isroutine(savefn), "save function must be a callable"
+    assert deletefn is None or inspect.isroutine(deletefn),\
+        "delete function must be a callable"
     extensions = model_extensions.get(model.__name__, {})
     type_ = fieldtype if not inspect.isclass(fieldtype) else fieldtype()
     extensions[fieldname] = (type_, loadfn, savefn, deletefn)
@@ -150,8 +149,29 @@ def delete_extensions(old_obj, new_obj):
                     u"Couldn't delete extension %s for object %s", field, new_obj)
 
 
+class _ListeningFlag(object):
+
+    def __init__(self, state):
+        self.state = state
+        self._mutex = null_mutex
+
+    def __nonzero__(self):
+        return bool(self.state)
+
+    @property
+    def mutex(self):
+        return self._mutex()
+
+    @mutex.setter
+    def mutex(self, m):
+        self._mutex = (lambda: m) if \
+            not inspect.isclass(m) and \
+            not inspect.isroutine(m) and \
+            not hasattr(m, '__call__') \
+            else m
+
 #: Toggled variable used to disable listening to operations momentarily.
-listening = True
+listening = _ListeningFlag(True)
 
 
 def toggle_listening(enabled=None):
@@ -161,8 +181,7 @@ def toggle_listening(enabled=None):
     If set to ``False``, no operations will be registered. This is
     used in the conflict resolution phase.
     """
-    global listening
-    listening = enabled if enabled is not None else not listening
+    listening.state = enabled if enabled is not None else not listening
 
 
 def with_listening(enabled):
@@ -173,15 +192,13 @@ def with_listening(enabled):
     def wrapper(proc):
         @wraps(proc)
         def wrapped(*args, **kwargs):
-            prev = listening
+            prev = bool(listening)
             toggle_listening(enabled)
             try:
-                result = proc(*args, **kwargs)
+                with listening.mutex:
+                    return proc(*args, **kwargs)
+            finally:
                 toggle_listening(prev)
-                return result
-            except:
-                toggle_listening(prev)
-                raise
         return wrapped
     return wrapper
 

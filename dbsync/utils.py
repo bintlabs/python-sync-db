@@ -140,3 +140,11 @@ class EventRegister(object):
         if listener not in self._listeners:
             self._listeners.append(listener)
         return listener
+
+
+class null_mutex(object):
+    "A context manager that does nothing."
+
+    def __enter__(self): pass
+
+    def __exit__(self, *args, **kwargs): pass
