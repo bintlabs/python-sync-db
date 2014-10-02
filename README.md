@@ -2,7 +2,7 @@ dbsync
 ======
 
 A python library for centralized database synchronization, built over
-[SQLAlchemy's ORM](http://docs.sqlalchemy.org/en/rel_0_9/orm/tutorial.html).
+[SQLAlchemy's ORM](http://docs.sqlalchemy.org/en/latest/orm/tutorial.html).
 
 The library aims to enable applications to function offline when their
 internet connection is lost, by using a local database and providing a
@@ -64,11 +64,11 @@ subroutine).
 
 [merge-subroutine]: https://github.com/bintlabs/python-sync-db/blob/master/merge.md
 
-![Synchronization sequence](https://raw.github.com/bintlabs/python-sync-db/master/diagram.png)
-
 If the `pull` procedure completes successfully, the client application
 may attempt another `push`, as shown by the cycle in the diagram
-above.
+below.
+
+![Synchronization sequence](https://raw.github.com/bintlabs/python-sync-db/master/diagram.png)
 
 ### Additional procedures ###
 
@@ -294,5 +294,3 @@ def query():
 Messages to the server usually contain additional user-set data, to
 allow for extra checks and custom protection. You can access these
 through `request.json.extra_data` when JSON is expected.
-
-Also, the HTTPS protocol is supported.
