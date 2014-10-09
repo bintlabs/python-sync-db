@@ -28,6 +28,8 @@ default_headers = {"Content-Type": "application/json",
 
 default_timeout = 1
 
+authentication_callback = None
+
 
 def _defaults(encode, decode, headers, timeout):
     e = encode if not encode is None else default_encoder
@@ -77,10 +79,12 @@ def post_request(server_url, json_dict,
         server_url = "http://" + server_url
     enc, dec, hhs, tout = _defaults(encode, decode, headers, timeout)
     stream = inspect.isroutine(monitor)
+    auth = authentication_callback(server_url) \
+        if authentication_callback is not None else None
     try:
         r = requests.post(server_url, data=enc(json_dict),
                           headers=hhs or None, stream=stream,
-                          timeout=tout)
+                          timeout=tout, auth=auth)
         response = None
         if stream:
             total = r.headers.get('content-length', None)
@@ -132,10 +136,12 @@ def get_request(server_url, data=None,
         server_url = "http://" + server_url
     enc, dec, hhs, tout = _defaults(encode, decode, headers, timeout)
     stream = inspect.isroutine(monitor)
+    auth = authentication_callback(server_url) \
+        if authentication_callback is not None else None
     try:
         r = requests.get(server_url, params=data,
                          headers=hhs or None, stream=stream,
-                         timeout=tout)
+                         timeout=tout, auth=auth)
         response = None
         if stream:
             total = r.headers.get('content-length', None)

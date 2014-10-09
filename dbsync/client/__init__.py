@@ -42,3 +42,8 @@ def set_default_headers(hhs):
 def set_default_timeout(t):
     assert isinstance(t, (int, long, float)), "timeout must be a number"
     net.default_timeout = t
+
+
+def set_authentication_callback(c):
+    assert inspect.isroutine(c), "authentication callback must be a function"
+    net.authentication_callback = c
