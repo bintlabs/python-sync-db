@@ -163,10 +163,15 @@ def handle_push(data, session=None):
         raise PushRejected("request object isn't a valid PushMessage", data)
     latest_version_id = core.get_latest_version_id(session)
     if latest_version_id != message.latest_version_id:
-        exc = PullSuggested if message.latest_version_id is not None and \
-            message.latest_version_id < latest_version_id else PushRejected
-        raise exc("version identifier isn't the latest one; "\
-                      "given: %d" % message.latest_version_id)
+        exc = "version identifier isn't the latest one; "\
+            "given: %d" % message.latest_version_id
+        if latest_version_id is None:
+            raise PushRejected(exc)
+        if message.latest_version_id is None:
+            raise PullSuggested(exc)
+        if message.latest_version_id < latest_version_id:
+            raise PullSuggested(exc)
+        raise PushRejected(exc)
     if not message.operations:
         raise PushRejected("message doesn't contain operations")
     if not message.islegit(session):

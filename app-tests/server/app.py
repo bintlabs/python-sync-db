@@ -77,6 +77,11 @@ def push():
         return (json.dumps(server.handle_push(request.json)),
                 200,
                 {"Content-Type": "application/json"})
+    except server.handlers.PullSuggested as e:
+        return (json.dumps({'error': [repr(arg) for arg in e.args],
+                            'suggest_pull': True}),
+                400,
+                {"Content-Type": "application/json"})
     except server.handlers.PushRejected as e:
         return (json.dumps({'error': [repr(arg) for arg in e.args]}),
                 400,
