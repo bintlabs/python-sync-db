@@ -17,7 +17,7 @@ from dbsync.client.register import (
 	get_node,
 	save_node)
 from dbsync.client.pull import UniqueConstraintError, pull
-import dbsync.client.push
+from dbsync.client import push as pushmodule
 from dbsync.client.push import PushRejected, PullSuggested, push
 from dbsync.client.ping import isconnected, isready
 from dbsync.client.repair import repair
@@ -39,7 +39,7 @@ def set_pull_suggestion_criterion(predicate):
     PushRejected.
     """
     assert inspect.isroutine(predicate), "criterion must be a function"
-    dbsync.client.push.suggests_pull = predicate
+    pushmodule.suggests_pull = predicate
     return predicate
 
 

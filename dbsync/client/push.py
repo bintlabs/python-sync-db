@@ -17,13 +17,8 @@ class PushRejected(Exception): pass
 class PullSuggested(PushRejected): pass
 
 
-def suggests_pull(code, reason, response):
-    """
-    Whether the given *response* suggests a pull operation from the
-    client. Set this to a custom predicate to interpret errors encoded
-    from the server.
-    """
-    return False
+# user-defined predicate to decide based on the server's response
+suggests_pull = None
 
 
 @core.with_transaction()
@@ -63,7 +58,7 @@ def push(push_url, extra_data=None,
         push_url, data, encode, decode, headers, timeout)
 
     if (code // 100 != 2) or response is None:
-        if suggests_pull(code, reason, response):
+        if suggests_pull is not None and suggests_pull(code, reason, response):
             raise PullSuggested(code, reason, response)
         raise PushRejected(code, reason, response)
     new_version_id = response.get('new_version_id')
