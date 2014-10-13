@@ -14,6 +14,17 @@ from dbsync.client.net import post_request
 
 class PushRejected(Exception): pass
 
+class PullSuggested(PushRejected): pass
+
+
+def suggests_pull(code, reason, response):
+    """
+    Whether the given *response* suggests a pull operation from the
+    client. Set this to a custom predicate to interpret errors encoded
+    from the server.
+    """
+    return False
+
 
 @core.with_transaction()
 def push(push_url, extra_data=None,
@@ -52,10 +63,16 @@ def push(push_url, extra_data=None,
         push_url, data, encode, decode, headers, timeout)
 
     if (code // 100 != 2) or response is None:
+        if suggests_pull(code, reason, response):
+            raise PullSuggested(code, reason, response)
         raise PushRejected(code, reason, response)
     new_version_id = response.get('new_version_id')
     if new_version_id is None:
-        raise PushRejected("server didn't respond with new version id", response)
+        raise PushRejected(
+            code,
+            reason,
+            {'error': "server didn't respond with new version id",
+             'response': response})
     # Who should set the dates? Maybe send a complete Version from the
     # server. For now the field is ignored, so it doesn't matter.
     session.add(

@@ -135,6 +135,8 @@ def handle_pull(data, swell=False, include_extensions=True):
 
 class PushRejected(Exception): pass
 
+class PullSuggested(PushRejected): pass
+
 
 #: Callbacks receive the session, the message, and the content_types.
 before_push = EventRegister()
@@ -161,8 +163,10 @@ def handle_push(data, session=None):
         raise PushRejected("request object isn't a valid PushMessage", data)
     latest_version_id = core.get_latest_version_id(session)
     if latest_version_id != message.latest_version_id:
-        raise PushRejected("version identifier isn't the latest one; "\
-                               "given: %d" % message.latest_version_id)
+        exc = PullSuggested if message.latest_version_id is not None and \
+            message.latest_version_id < latest_version_id else PushRejected
+        raise exc("version identifier isn't the latest one; "\
+                      "given: %d" % message.latest_version_id)
     if not message.operations:
         raise PushRejected("message doesn't contain operations")
     if not message.islegit(session):

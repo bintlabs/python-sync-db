@@ -26,7 +26,7 @@ default_decoder = json.loads
 default_headers = {"Content-Type": "application/json",
                    "Accept": "application/json"}
 
-default_timeout = 1
+default_timeout = 10
 
 authentication_callback = None
 

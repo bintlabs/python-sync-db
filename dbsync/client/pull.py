@@ -2,6 +2,8 @@
 Pull, merge and related operations.
 """
 
+import collections
+
 from sqlalchemy import func
 from sqlalchemy.orm import make_transient
 
@@ -78,11 +80,16 @@ def update_local_id(old_id, new_id, ct, content_types, session):
     session.flush()  # raise integrity errors now
 
 
+UniqueConstraintErrorEntry = collections.namedtuple(
+    'UniqueConstraintErrorEntry',
+    'model pk columns')
+
 class UniqueConstraintError(Exception):
 
     entries = None
 
     def __init__(self, entries):
+        entries = map(partial(apply, UniqueConstraintErrorEntry, ()), entries)
         super(UniqueConstraintError, self).__init__(entries)
         self.entries = entries
 
@@ -91,9 +98,9 @@ class UniqueConstraintError(Exception):
         return u"<UniqueConstraintError - {0}>".format(
             u"; ".join(
                 u"{0} pk {1} columns ({2})".format(
-                    entry['model'].__name__,
-                    entry['pk'],
-                    u", ".join(entry['columns']))
+                    entry.model.__name__,
+                    entry.pk,
+                    u", ".join(entry.columns))
                 for entry in self.entries))
 
     def __str__(self): return repr(self)

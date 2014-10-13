@@ -204,18 +204,18 @@ def synchronize(push_url, pull_url, tries):
     for _ in range(tries):
         try:
             return client.push(push_url)
-        except:
+        except client.PushRejected:
             try:
                 client.pull(pull_url)
-            except:
-                # handle exception
-                pass
+            except client.UniqueConstraintError as e:
+                for model, pk, columns in e.entries:
+                    pass # handle exception
     raise Exception("push rejected %d times" % tries)
 ```
 
-You can also catch the different exceptions (second `except` above)
-and react accordingly, since they can indicate lack of internet
-connection, integrity conflicts, or dbsync configuration problems.
+You may catch the different exceptions and react accordingly, since
+they can indicate lack of internet connection, integrity conflicts, or
+dbsync configuration problems.
 
 #### Server side ####
 
