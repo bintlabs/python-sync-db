@@ -5,6 +5,7 @@ Operation compression, both in-memory and in-database.
 import warnings
 
 from dbsync.lang import *
+from dbsync.utils import get_pk, query_model
 from dbsync import core
 from dbsync.models import Version, Operation, ContentType
 from dbsync.logs import get_logger
@@ -51,9 +52,6 @@ def _assert_operation_sequence(seq, session=None):
             logger.error(
                 u"Can't have anything before an insert in operation sequence. %s",
                 seq)
-            # repair the sequence
-            if session is not None:
-                map(session.delete, seq[1:])
 
 
 def compress():
@@ -71,7 +69,7 @@ def compress():
         filter(Operation.version_id == None).order_by(Operation.order.desc())
     seqs = group_by(lambda op: (op.row_id, op.content_type_id), unversioned)
 
-    # Check errors on sequences, and repair if needed
+    # Check errors on sequences
     for seq in seqs.itervalues():
         _assert_operation_sequence(seq, session)
 
@@ -90,6 +88,27 @@ def compress():
             elif seq[0].command == 'd':
                 # leave the delete statement
                 map(session.delete, seq[1:])
+    session.flush()
+
+    # repair inconsistencies
+    models = dict((ct.content_type_id,
+                   core.synched_models.get(ct.model_name, None))
+                  for ct in session.query(ContentType))
+    for operation in session.query(Operation).\
+            filter(Operation.version_id == None):
+        model = models.get(operation.content_type_id, None)
+        if not model:
+            logger.error(
+                "operation linked to content type "
+                "not tracked: %s" % operation.content_type_id)
+            continue
+        if operation.command in ('i', 'u'):
+            if query_model(session, model, only_pk=True).\
+                    filter_by(**{get_pk(model): operation.row_id}).count() == 0:
+                logger.warning(
+                    "deleting inconsistent operation %s for model %s" %\
+                        (operation, model.__name__))
+                session.delete(operation)
     session.commit()
     session.close()
 
