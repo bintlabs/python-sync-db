@@ -95,7 +95,9 @@ def compress():
                    core.synched_models.get(ct.model_name, None))
                   for ct in session.query(ContentType))
     for operation in session.query(Operation).\
-            filter(Operation.version_id == None):
+            filter(Operation.version_id == None).\
+            order_by(Operation.order.desc()).all():
+        session.flush()
         model = models.get(operation.content_type_id, None)
         if not model:
             logger.error(
@@ -106,16 +108,29 @@ def compress():
             if query_model(session, model, only_pk=True).\
                     filter_by(**{get_pk(model): operation.row_id}).count() == 0:
                 logger.warning(
-                    "deleting inconsistent operation %s for model %s" %\
-                        (operation, model.__name__))
+                    "deleting operation %s for model %s "
+                    "for absence of backing object" % (operation, model.__name__))
                 session.delete(operation)
+                continue
+        if session.query(Operation).\
+                filter(Operation.content_type_id == operation.content_type_id,
+                       Operation.command == operation.command,
+                       Operation.version_id == None,
+                       Operation.row_id == operation.row_id,
+                       Operation.order != operation.order).count() > 0:
+            logger.warning(
+                "deleting operation %s for model %s "
+                "for being redundant after compression" %\
+                    (operation, model.__name__))
+            session.delete(operation)
+            continue
     session.commit()
     session.close()
 
 
 def compressed_operations(operations):
     """
-    Compresses as set of operations so as to avoid redundant
+    Compresses a set of operations so as to avoid redundant
     ones. Returns the compressed set sorted by operation order. This
     procedure doesn't perform database operations.
     """
