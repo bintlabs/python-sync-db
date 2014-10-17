@@ -75,14 +75,14 @@ def compress():
 
     for seq in ifilter(lambda seq: len(seq) > 1, seqs.itervalues()):
         if seq[-1].command == 'i':
-            if andmap(attr('command') == 'u', seq[:-1]):
+            if all(op.command == 'u' for op in seq[:-1]):
                 # updates are superfluous
                 map(session.delete, seq[:-1])
             elif seq[0].command == 'd':
                 # it's as if the object never existed
                 map(session.delete, seq)
         elif seq[-1].command == 'u':
-            if andmap(attr('command') == 'u', seq[:-1]):
+            if all(op.command == 'u' for op in seq[:-1]):
                 # leave a single update
                 map(session.delete, seq[1:])
             elif seq[0].command == 'd':

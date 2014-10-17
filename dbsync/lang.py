@@ -136,26 +136,6 @@ def method(name, *args, **kwargs):
     return Function(lambda obj: getattr(obj, name)(*args, **kwargs))
 
 
-def andmap(predicate, collection, *collections):
-    "Map predicate and reduce with and, short circuiting."
-    iters = map(iter, collections)
-    for elem in collection:
-        elems = map(next, iters)
-        if not predicate(elem, *elems):
-            return False
-    return True
-
-
-def ormap(predicate, collection, *collections):
-    "Map predicate and reduce with or, short circuiting."
-    iters = map(iter, collections)
-    for elem in collection:
-        elems = map(next, iters)
-        if predicate(elem, *elems):
-            return True
-    return False
-
-
 def group_by(fn, col):
     """
     Groups a collection according to the given *fn* into a dictionary.
