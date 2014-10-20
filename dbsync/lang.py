@@ -2,49 +2,12 @@
 Generic functions for repeating patterns.
 """
 
-from itertools import imap, ifilter, starmap, izip, dropwhile, takewhile
+from itertools import imap, ifilter, izip
 from functools import partial as partial_apply, wraps
-
-
-def begin(arg, *args):
-    "Sequencing, for use in lambdas."
-    if not args:
-        return arg
-    return args[-1]
 
 
 def identity(x):
     return x
-
-
-def const(value):
-    return lambda *args, **kwargs: value
-
-
-def index(ind):
-    return lambda indexable: indexable[ind]
-
-fst = index(0)
-snd = index(1)
-
-
-def swap(pair):
-    f, s = pair
-    return (s, f)
-
-
-def partition(predicate, collection):
-    """
-    Splits the collection according to the predicate.
-
-    Returns a pair of (true-tested, false-tested). Evaluating it is
-    equivalent to evaluating ``(filter(predicate, collection),
-    filter(lambda e: not predicate(e), collection))``
-    """
-    positives, negatives = [], []
-    for e in collection:
-        (positives if predicate(e) else negatives).append(e)
-    return (positives, negatives)
 
 
 def maybe(value, fn=identity, default=""):
