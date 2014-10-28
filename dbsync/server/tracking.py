@@ -9,11 +9,16 @@ connected nodes capable of synchronizing their data.
 import logging
 import inspect
 import datetime
+import warnings
 
 from sqlalchemy import event
 
 from dbsync import core
 from dbsync.models import Operation, ContentType, Version
+
+if core.mode == 'client':
+    warnings.warn("don't import both server and client")
+core.mode = 'server'
 
 
 def make_listener(command):

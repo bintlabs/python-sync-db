@@ -27,6 +27,11 @@ def Session():
     return s
 
 
+#: The internal use mode, used to prevent client-server module
+#  collision. Possible values are 'modeless', 'client', 'server'.
+mode = 'modeless'
+
+
 #: The engine used for database connections.
 _engine = None
 

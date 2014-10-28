@@ -4,6 +4,7 @@ Listeners to SQLAlchemy events to keep track of CUD operations.
 
 import logging
 import inspect
+import warnings
 from collections import deque
 
 from sqlalchemy import event
@@ -11,6 +12,10 @@ from sqlalchemy.orm.session import Session as GlobalSession
 
 from dbsync import core
 from dbsync.models import Operation, ContentType
+
+if core.mode == 'server':
+    warnings.warn("don't import both client and server")
+core.mode = 'client'
 
 
 #: Operations to be flushed to the database after a commit.
