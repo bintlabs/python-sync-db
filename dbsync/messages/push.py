@@ -135,9 +135,9 @@ class PushMessage(BaseMessage):
     def islegit(self, session):
         "Checks whether the key for this message is proper."
         if self.key is None or self.node_id is None: return False
-        node = session.query(Node).filter(Node.node_id == self.node_id).one()
-        return self.key == hashlib.sha512(node.secret + self._portion()).\
-            hexdigest()
+        node = session.query(Node).filter(Node.node_id == self.node_id).first()
+        return node is not None and \
+            self.key == hashlib.sha512(node.secret + self._portion()).hexdigest()
 
     def _add_operation(self, op, session):
         mname = op.content_type.model_name
