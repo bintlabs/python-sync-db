@@ -359,26 +359,163 @@ Findings
 --------
 
 <table>
-<thead>
-<tr>
-<th>#</td>
-<th>Source</th>
-<th>Summary</th>
-<th>Comments</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td valign="top">1</td>
-<td valign="top"><a href="http://grids.ucs.indiana.edu/ptliupages/hhms/pdf/disconnected.pdf">Disconnected Operation in the Coda File System</a></td>
-<td valign="top">The Coda File System enables clients to work with shared files while disconnected through <i>caching</i>. It employs an <i>optimistic strategy</i>, not blocking access to files but detecting and resolving conflicts after reconnection. It was designed to <i>improve availability</i>.</td>
-<td valign="top"><ul><li>Coda operates on different modes when connected or disconnected. An interface exists to make the state change transparent to applications [3 Design Rationale].</li>
-<li>The client holds the majority of Disconnected Operation’s complexity [4 Detailed Design And Implementation].</li>
-<li>Batches of file identifiers are supplied by the server while connected. When disconnected, temporary identifiers are used once the batch is exhausted [4.5.1 Replay Algorithm].</li>
-<li>It records operations on a <i>replay log</i>, used later to reintegrate changes to the server. Also, records of previous changes on a single file are discarded, as an optimization [4.4.1 Logging].</li>
-<li>Unsolvable conflicts are forwarded to the user by marking the file replicas inconsistent [4.5.2 Conflict Handling].</li></ul></td>
-</tr>
-</tbody>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Source</th>
+      <th>Summary</th>
+      <th>Comments</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td valign="top">1</td>
+      <td valign="top">
+        <a href="http://grids.ucs.indiana.edu/ptliupages/hhms/pdf/disconnected.pdf">Disconnected Operation in the Coda File System</a>
+      </td>
+      <td valign="top">
+        The Coda File System enables clients to work with shared files
+        while disconnected through <i>caching</i>. It employs
+        an <i>optimistic strategy</i>, not blocking access to files
+        but detecting and resolving conflicts after reconnection. It
+        was designed to <i>improve availability</i>.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            Coda operates on different modes when connected or
+            disconnected. An interface exists to make the state change
+            transparent to applications [3 Design Rationale].
+          </li>
+          <li>
+            The client holds the majority of Disconnected Operation’s
+            complexity [4 Detailed Design And Implementation].
+          </li>
+          <li>
+            Batches of file identifiers are supplied by the server
+            while connected. When disconnected, temporary identifiers
+            are used once the batch is exhausted [4.5.1 Replay
+            Algorithm].
+          </li>
+          <li>
+            It records operations on a <i>replay log</i>, used later
+            to reintegrate changes to the server. Also, records of
+            previous changes on a single file are discarded, as an
+            optimization [4.4.1 Logging].
+          </li>
+          <li>
+            Unsolvable conflicts are forwarded to the user by marking
+            the file replicas inconsistent [4.5.2 Conflict
+            Handling].
+          </li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td valign="top">2</td>
+      <td valign="top">
+        <a href="http://people.bu.edu/staro/efficient_pda.pdf">Efficient PDA Synchronization</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">3</td>
+      <td valign="top">
+        <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=1226606">Set Reconciliation with Nearly Optimal Communication Complexity</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">4</td>
+      <td valign="top">
+        <a href="http://www.samba.org/~tridge/phd_thesis.pdf">Efficient Algorithms for Sorting and Synchronization</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">5</td>
+      <td valign="top">
+        <a href="http://zoo.cs.yale.edu/classes/cs422/2013/bib/terry95managing.pdf">Managing update conflicts in bayou, a weakly connected replicated storage system</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">6</td>
+      <td valign="top">
+        <a href="http://static.googleusercontent.com/media/research.google.com/es//pubs/archive/35605.pdf">Differential Synchronization</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">7</td>
+      <td valign="top">
+        <a href="http://www.oracle.com/technetwork/topics/olsync-131762.pdf">Oracle Lite Synchronization</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">8</td>
+      <td valign="top">
+        <a href="http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf">Detecting synchronization conflicts for horizontally decentralized relational databases</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">9</td>
+      <td valign="top">
+        <a href="http://msdn.microsoft.com/en-us/library/bb902818%28v=sql.110%29.aspx">Microsoft Sync Framework</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">10</td>
+      <td valign="top">
+        <a href="http://www.sybase.com/files/White_Papers/wp-ias-MobiLink12Performance.pdf">Sybase MobiLink 12 Performance</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">11</td>
+      <td valign="top">
+        <a href="https://www.firebase.com/blog/2013-03-25-where-does-firebase-fit.html">Where does Firebase fit in your app?</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">12</td>
+      <td valign="top">
+        <a href="http://tools.ietf.org/html/rfc3501">Internet Message Access Protocol</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">13</td>
+      <td valign="top">
+        <a href="https://support.mozilla.org/en-US/kb/imap-synchronization">IMAP Synchronization | Thunderbird Help</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">14</td>
+      <td valign="top">
+        <a href="http://docs.datomic.com/architecture.html">Architecture Overview | Datomic</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+  </tbody>
 </table>
 
 TODO fill the table
