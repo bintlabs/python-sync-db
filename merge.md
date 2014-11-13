@@ -355,23 +355,30 @@ to resolve it.
 
 TODO define unique constraint resolution.
 
-References
-----------
+Findings
+--------
 
-1. Gerritsen J. (2012), Detecting synchronization conflicts for
-   horizontally decentralized relational
-   databases. [Source](http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf).
+<table>
+<thead>
+<tr>
+<th>#</td>
+<th>Source</th>
+<th>Summary</th>
+<th>Comments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td valign="top">1</td>
+<td valign="top"><a href="http://grids.ucs.indiana.edu/ptliupages/hhms/pdf/disconnected.pdf">Disconnected Operation in the Coda File System</a></td>
+<td valign="top">The Coda File System enables clients to work with shared files while disconnected through <i>caching</i>. It employs an <i>optimistic strategy</i>, not blocking access to files but detecting and resolving conflicts after reconnection. It was designed to <i>improve availability</i>.</td>
+<td valign="top"><ul><li>Coda operates on different modes when connected or disconnected. An interface exists to make the state change transparent to applications [3 Design Rationale].</li>
+<li>The client holds the majority of Disconnected Operation’s complexity [4 Detailed Design And Implementation].</li>
+<li>Batches of file identifiers are supplied by the server while connected. When disconnected, temporary identifiers are used once the batch is exhausted [4.5.1 Replay Algorithm].</li>
+<li>It records operations on a <i>replay log</i>, used later to reintegrate changes to the server. Also, records of previous changes on a single file are discarded, as an optimization [4.4.1 Logging].</li>
+<li>Unsolvable conflicts are forwarded to the user by marking the file replicas inconsistent [4.5.2 Conflict Handling].</li></ul></td>
+</tr>
+</tbody>
+</table>
 
-2. Kirkman R. (2013), Simple Relational Database
-   Sync. [Source](http://ryankirkman.com/2013/02/03/simple-relational-database-sync.html).
-
-3. Microsoft, Introduction to Sync Framework Database
-   Synchronization. [Source](http://msdn.microsoft.com/en-us/sync/bb887608.aspx).
-
-4. Narayanan A. (2013), Where does Firebase fit in your
-   app?. [Source](https://www.firebase.com/blog/2013-03-25-where-does-firebase-fit.html).
-
-5. Hurst G. (2012), MobiLink 12
-   Performance. [Source](http://www.sybase.com/files/White_Papers/wp-ias-MobiLink12Performance.pdf).
-
-TODO actually refer to those
+TODO fill the table
