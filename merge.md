@@ -416,24 +416,121 @@ Findings
       <td valign="top">
         <a href="http://people.bu.edu/staro/efficient_pda.pdf">Efficient PDA Synchronization</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        An algorithm for synchronizing <i>unordered data sets</i>
+        which depends on differences between two data sets, and not on
+        the number of records. It improves on previous mobile device
+        synchronization algorithms in terms of bandwidth usage and
+        latency. Tested on PDAs.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            It’s a peer-to-peer communication scheme, where no
+            hierarchy is required between devices, and no operation
+            logs need to be maintained.
+          </li>
+          <li>
+            The algorithm finds the symmetric difference of sets of
+            <i>integers in a finite field</i>. Thus, the hashing of
+            data is required.
+          </li>
+          <li>
+            The algorithm depends on foreknowledge of the <i>number of
+            differences</i> between two sets. It proposes, however, a
+            probabilistic practical method to find a good estimate of
+            a tight upper bound, based on random sampling.
+          </li>
+          <li>
+            It consists of the construction of a characteristic
+            polynomial that describes a data set, and the subsequent
+            application of said polynomial on fixed evaluation
+            points. The computed values are sent from one host to the
+            other, which uses them to find the set differences through
+            interpolation.
+          </li>
+          <li>
+            An implementation can be made efficient in terms of
+            latency (time spent), or communication (data sent).
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">3</td>
       <td valign="top">
         <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=1226606">Set Reconciliation with Nearly Optimal Communication Complexity</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        A family of algorithms for set reconciliation is presented, as
+        in [2], which depend exclusively on the number of differences
+        between sets.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            It is shown that the algorithm is equivalent to the
+            transmission of the redundancy of a Reed-Solomon encoding
+            of the coefficients of the characteristic polynomial. It
+            is implied that the problem is equivalent when stated as
+            an error-correcting problem (differences between sets are
+            seen as errors).
+          </li>
+          <li>
+            An information-theoretical explanation is given as to why
+            a probabilistic approach to finding the upper bound is
+            required, in the interest of keeping the communication
+            efficient.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">4</td>
       <td valign="top">
         <a href="http://www.samba.org/~tridge/phd_thesis.pdf">Efficient Algorithms for Sorting and Synchronization</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        <i>rsync</i> is an algorithm for updating byte strings (files)
+        remotely, over a low-bandwidth, high-latency channel. The
+        design and special considerations in implementation are given.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            Only sections 3, 4, 5 and 6 were considered.
+          </li>
+          <li>
+            Grossly, rsync consist of the transmission of block
+            signatures, for a fixed number of blocks in the file, and
+            the matching of said signatures against the remote file's
+            signatures. Only the required blocks are then sent and
+            updated.
+          </li>
+          <li>
+            rsync uses two signature functions, a fast signature used
+            to filter matching blocks, and a slow, reliable signature
+            used to discard false positives [3.2.3 Two signatures].
+          </li>
+          <li>
+            Special consideration is given for file formats that alter
+            their structure broadly for generally small editions, such
+            as compressed files.
+          </li>
+          <li>
+            rsync can be used as the remote-update tool for
+            distributed filesystems on high-latency networks that work
+            with <i>file leases</i>, contracts that give the client
+            write permissions over a file for a period of time. A
+            remote update is then performed to send the local changes
+            to the server, which is more efficient than sending the
+            whole file [5.5 rsync in a network filesystem].
+          </li>
+          <li>
+            rsync is currently part of the standard unix toolset.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">5</td>
