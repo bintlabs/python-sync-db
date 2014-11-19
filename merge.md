@@ -537,8 +537,59 @@ Findings
       <td valign="top">
         <a href="http://zoo.cs.yale.edu/classes/cs422/2013/bib/terry95managing.pdf">Managing update conflicts in bayou, a weakly connected replicated storage system</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        <i>Bayou</i> is a distributed storage system and platform for
+        applications, that provides primitives for data
+        synchronization and guarantees the <i>eventual consistency</i>
+        of the datasets across devices, thanks to its update
+        propagation protocol.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            The system is hierarchical in that a client-server
+            distinction is made, but it can support several servers,
+            which communicate to homologize their changes.
+          </li>
+          <li>
+            All communication is pairwise: client-server or
+            server-server.
+          </li>
+          <li>
+            Applications are required to provide procedures that
+            detect write-write and read-write conflicts, which are run
+            at the server during synchronization. These procedures
+            must meet a specific contract and run with limited
+            resources [4.2 Dependency checks].
+          </li>
+          <li>
+            Applications must also provide conflict resolvers, which
+            are then used to resolve the detected conflicts
+            automatically. These procedures may also fail to correct
+            conflicts, and notify users through specific logs [4.3
+            Merge procedures].
+          </li>
+          <li>
+            Applications are encouraged to work with the notion of
+            <i>pending</i> and <i>committed</i> transactions [6. Write
+            Stability and Commitment].
+          </li>
+          <li>
+            Servers communicate with each other in
+            an <i>anti-entropy</i> process that reverts, reorders and
+            replays operations based on timestamps and a logical clock
+            [5. Replica Consistency]. A single server is said to be
+            the <i>primary</i> for a specific data set, and is the one
+            able to finalize an update in the form of a <i>commit</i>
+            [6. Write Stability and Commitment].
+          </li>
+          <li>
+            The custom storage system used is a relational database
+            with an extra 2-bit column that indicates the state of
+            each tuple [7. Storage System Implementation Issues].
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">6</td>
@@ -608,6 +659,14 @@ Findings
       <td valign="top">14</td>
       <td valign="top">
         <a href="http://docs.datomic.com/architecture.html">Architecture Overview | Datomic</a>
+      </td>
+      <td valign="top"></td>
+      <td valign="top"></td>
+    </tr>
+    <tr>
+      <td valign="top">15</td>
+      <td valign="top">
+        <a href="https://www.dropbox.com/developers/datastore/docs/python">Python Datastore API documentation - Dropbox</a>
       </td>
       <td valign="top"></td>
       <td valign="top"></td>

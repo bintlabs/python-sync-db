@@ -1,14 +1,14 @@
 """
 Internal model used to keep track of versions and operations.
 """
-import datetime
+
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship, backref, validates
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, query_model
+from dbsync.utils import get_pk, query_model, properties_dict
 from dbsync.logs import get_logger
 
 
@@ -30,7 +30,7 @@ Base = declarative_base(metaclass=PrefixTables)
 
 
 class ContentType(Base):
-    """A weak abstraction over a database table."""
+    "A weak abstraction over a database table."
 
     __tablename__ = "content_types"
 
@@ -44,9 +44,11 @@ class ContentType(Base):
 
 
 class Node(Base):
-    """A node registry.
+    """
+    A node registry.
 
-    A node is a client application installed somewhere else."""
+    A node is a client application installed somewhere else.
+    """
 
     __tablename__ = "nodes"
 
@@ -68,10 +70,12 @@ class Node(Base):
 
 
 class Version(Base):
-    """A database version.
+    """
+    A database version.
 
     These are added for each 'push' accepted and executed without
-    problems."""
+    problems.
+    """
 
     __tablename__ = "versions"
 
@@ -90,10 +94,12 @@ class OperationError(Exception): pass
 
 
 class Operation(Base):
-    """A database operation (insert, delete or update).
+    """
+    A database operation (insert, delete or update).
 
     The operations are grouped in versions and ordered as they are
-    executed."""
+    executed.
+    """
 
     __tablename__ = "operations"
 
@@ -138,9 +144,10 @@ class Operation(Base):
 
     def perform(operation, content_types, synched_models, container, session,
                 node_id=None):
-        """Performs *operation*, looking for required data and
-        metadata in *content_types*, *synched_models*, and
-        *container*, and using *session* to perform it.
+        """
+        Performs *operation*, looking for required data and metadata
+        in *content_types*, *synched_models*, and *container*, and
+        using *session* to perform it.
 
         *container* is an instance of
         dbsync.messages.base.BaseMessage.
@@ -149,7 +156,8 @@ class Operation(Base):
         (else ``None``).
 
         If at any moment this operation fails for predictable causes,
-        it will raise an *OperationError*."""
+        it will raise an *OperationError*.
+        """
         ct = lookup(attr('content_type_id') == operation.content_type_id,
                     content_types)
         if ct is None:
@@ -159,20 +167,36 @@ class Operation(Base):
             raise OperationError("no model for this operation", operation)
 
         if operation.command == 'i':
-            obj = container.query(model).\
+            obj = query_model(session, model).\
+                filter(getattr(model, get_pk(model)) == operation.row_id).first()
+            pull_obj = container.query(model).\
                 filter(attr('__pk__') == operation.row_id).first()
-            if obj is None:
+            if pull_obj is None:
                 raise OperationError(
                     "no object backing the operation in container", operation)
-            session.add(obj)
+            if obj is None:
+                session.add(pull_obj)
+            else:
+                # Don't raise an exception if the incoming object is
+                # exactly the same as the local one.
+                if properties_dict(obj) == properties_dict(pull_obj):
+                    logger.warning(u"insert attempted when an identical object "
+                                   u"already existed in local database: "
+                                   u"model {0} pk {1}".format(model.__name__,
+                                                              operation.row_id))
+                else:
+                    raise OperationError(
+                        u"insert attempted when the object already existed: "
+                        u"model {0} pk {1}".format(model.__name__,
+                                                   operation.row_id))
 
         elif operation.command == 'u':
             obj = query_model(session, model).\
                 filter(getattr(model, get_pk(model)) == operation.row_id).first()
             if obj is None:
-                # What should be done in this case !!!
-                # For now, the record will be created again, but is an error
-                # because nothing should be deleted without using dbsync
+                # For now, the record will be created again, but is an
+                # error because nothing should be deleted without
+                # using dbsync
                 # raise OperationError(
                 #     "the referenced object doesn't exist in database", operation)
                 logger.warning(
@@ -193,8 +217,9 @@ class Operation(Base):
                 filter(getattr(model, get_pk(model)) == operation.row_id).first()
             if obj is None:
                 # The object is already deleted in the server
-                # The final state in node and server are the same. But is an error
-                # because nothing should be deleted without using dbsync
+                # The final state in node and server are the same. But
+                # it's an error because nothing should be deleted
+                # without using dbsync
                 logger.warning(
                     "The referenced object doesn't exist in database. "
                     u"Node %s. Operation %s",
