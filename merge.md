@@ -596,45 +596,285 @@ Findings
       <td valign="top">
         <a href="http://static.googleusercontent.com/media/research.google.com/es//pubs/archive/35605.pdf">Differential Synchronization</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        Differential Synchronization refers to a method for
+        homologizing text documents over a network, that is based on
+        continuously computing the difference between texts and
+        patching the remote copy.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            The protocol works with backup copies of the document,
+            called <i>shadows</i>, that represent the previous state
+            of the document. Shadows are used for computing document
+            differences locally (either in the client or the server),
+            which are then sent to the other party for patching, using
+            a best-effort strategy [3. Differential Synchronization
+            Overview].
+          </li>
+          <li>
+            Communication interruptions are accounted for through
+            backup shadows in the server [5.1 Asymmetry].
+          </li>
+          <li>
+            Different multi-client, multi-server configurations can
+            yield different performance measurements, since
+            the <i>diff</i> and <i>patch</i> load can be distributed
+            along the network [6. Topology].
+          </li>
+          <li>
+            It is entirely based on state, and thus it’s performance
+            depends heavily on the <i>diff</i> and <i>patch</i>
+            algorithms [7. Diff and Patch].
+          </li>
+          <li>
+            The messages sent are the differences computed, not the
+            whole document.
+          </li>
+          <li>
+            This method presents scalability enhancements in
+            comparison to other common protocols used in collaborative
+            editing and version control, such as the three-way-merge,
+            or log-based approaches.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">7</td>
       <td valign="top">
         <a href="http://www.oracle.com/technetwork/topics/olsync-131762.pdf">Oracle Lite Synchronization</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        Oracle Lite is a database management system (DBMS) that, in
+        conjunction with a specialized server and a central database,
+        gives applications the ability to synchronize a relational
+        database with a centralized database.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            The client database is a modified version of an Oracle
+            DBMS that keeps track of operations internally.
+          </li>
+          <li>
+            The synchronization architecture uses queues and
+            asynchronous calls to ensure availability and consistency.
+          </li>
+          <li>
+            Conflict resolution is determined by a customizable,
+            single ‘winner’: either the client or the server.
+          </li>
+          <li>
+            Operations in the log are merged together, so that only
+            the final state of a record is sent.
+          </li>
+          <li>
+            A specific and customizable execution order is given to
+            the operations performed. This order takes into account
+            the possible operation interdependencies and
+            the <i>weights</i> given to the tables by the application
+            owner.
+          </li>
+          <li>
+            Automatic, event-based and manual synchronization can be
+            configured.
+          </li>
+          <li>
+            The uniqueness of sequence-generated numbers (e.g. primary
+            keys) is guaranteed by a partition set at the server,
+            whereby a certain range of numbers is reserved to each
+            client.
+          </li>
+          <li>
+            Oracle Lite provides mechanisms to separate the central
+            database into subsets that act as a restricted dataset for
+            each client.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">8</td>
       <td valign="top">
         <a href="http://essay.utwente.nl/61767/1/Master_thesis_Jan-Henk_Gerritsen.pdf">Detecting synchronization conflicts for horizontally decentralized relational databases</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        Several theorems that determine presence or absence of
+        synchronization conflicts are given. The theorems reference
+        <i>atomic</i> and <i>composite</i> operations performed given
+        a common initial state.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            Operations are viewed as functions that, given a database
+            state, produce a different database state.
+          </li>
+          <li>
+            Atomic operations are defined to be single-tuple inserts,
+            updates or deletes [4.2 Definition of atomic operations].
+          </li>
+          <li>
+            Composite operations are defined as a series of atomic
+            operations that should be treated as a single unit [5.1.1
+            Definition of a composite operation].
+          </li>
+          <li>
+            Three categories of conflicts are defined, with different
+            decision trees for each one: conflicts based on different
+            states, intra-relational conflicts, and inter-relational
+            conflicts [4.6 Decision graphs for conflicts].
+          </li>
+          <li>
+            The first category groups conflicts that are defined as a
+            pair of operations that, when applied sequentially in a
+            specific order, produce a different database state that
+            when applied in a different order [4.4.1 Unequal database
+            states after synchronization].
+          </li>
+          <li>
+            The second category groups conflicts stemmed from
+            constraints or keys defined for a table [4.5.1 Violations
+            of intra-relational integrity constraints].
+          </li>
+          <li>
+            The third category is composed of conflicts that violate
+            foreign keys and inclusion dependencies [4.5.2 Violations
+            of inter-relational integrity constraints].
+          </li>
+          <li>
+            Detection of conflicts for composite operations is done by
+            inspecting each composite operation in terms of their
+            atomic components. Also, related operations in a sequence
+            are analysed for dependency, in that one is dependent on
+            the state change produced by the other [5.2.1 Related
+            atomic operations].
+          </li>
+          <li>
+            The conflict analysis is not based on database state, but
+            on the operations themselves. It follows that
+            implementations could use operation logs to detect
+            conflicts, rather than compute state differences.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">9</td>
       <td valign="top">
-        <a href="http://msdn.microsoft.com/en-us/library/bb902818%28v=sql.110%29.aspx">Microsoft Sync Framework</a>
+        <p><a href="http://msdn.microsoft.com/en-us/library/bb902818%28v=sql.110%29.aspx">Microsoft Sync Framework</a>, last consulted november 22th, 2014.</p>
+        <p>Sections:</p>
+        <ol>
+          <li><a href="http://msdn.microsoft.com/en-us/library/dd918682(v=sql.110).aspx">Infrastructure</a></li>
+          <li><a href="http://msdn.microsoft.com/en-us/library/bb725997(v=sql.110).aspx">Conflicts</a></li>
+        </ol>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        The framework enables databases to synchronize in
+        <i>collaborative editing</i> scenarios and <i>occasionally
+        connected</i> scenarios.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            Several database management systems are supported, thanks
+            to <i>synchronization providers</i>, application libraries
+            that mask the Sync Framework implementation
+            details. ADO.NET compatible databases are generally
+            supported.
+          </li>
+          <li>
+            Client-server and client-client topologies are fully
+            supported.
+          </li>
+          <li>
+            The installation of the framework implies the construction
+            of the Sync Framework infrastructure, as dictated by the
+            synchronization provider. The infrastructure consists of
+            tables, triggers and stored procedures.
+          </li>
+          <li>
+            Conflict detection and automatic conflict resolution are
+            performed by the provider library.
+          </li>
+          <li>
+            Complex operation logs (<i>tracking tables</i>) are kept
+            up-to-date with each database, and are populated with
+            <i>triggers</i> [9.1].
+          </li>
+          <li>
+            Conflicts occur at the row level [9.2].
+          </li>
+          <li>
+            Conflict resolution is fully customizable, through access
+            to copies of the datasets involved in synchronization
+            [9.2].
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">10</td>
       <td valign="top">
-        <a href="http://www.sybase.com/files/White_Papers/wp-ias-MobiLink12Performance.pdf">Sybase MobiLink 12 Performance</a>
+        <p><a href="http://www.sybase.com/files/White_Papers/wp-ias-MobiLink12Performance.pdf">Sybase MobiLink 12 Performance</a></p>
+        <p>and</p>
+        <p><a href="http://infocenter.sybase.com/help/topic/com.sybase.help.sqlanywhere.11.0.1/PDF/mlserver_en11.pdf">MobiLink Server Administration</a></p>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        Sybase MobiLink forms a client-server architecture for
+        database synchronization. Many DBMSs are supported for the
+        server-side data store, and two Sybase DBMSs are supported for
+        the client application: UltraLite and SQL Anywhere.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            The server architecture is designed to maximize
+            performance. It is split in multiple components, each
+            handled by at least one separate thread.
+          </li>
+          <li>
+            Simultaneous synchronizations are allowed by the server.
+          </li>
+          <li>
+            Multiple synchronization techniques are supported, such as
+            timestamp synchronization (using a ‘last-updated’
+            timestamp column to determine whether a row is to be
+            included), and snapshot synchronization (which includes
+            whole tables).
+          </li>
+          <li>
+            All tables must have primary keys defined, and their
+            values should be unique across all databases partaking in
+            synchronization. The primary keys should not be modified
+            by the applications. Primary key domains for
+            autoincrementing keys are partitioned at the server.
+          </li>
+          <li>
+            Primary keys are used to identify synchronization
+            conflicts.
+          </li>
+          <li>
+            Conflicts are detected and custom resolution can be
+            implemented by listening to specific events. A ‘forced
+            mode’ can be used that treats every incoming row as a
+            conflict, which then triggers all related events.
+          </li>
+          <li>
+            Deletes can be detected through use of <i>shadow
+            tables</i> (a form of simple operations log for deletes)
+            or logical deletes (not deleting rows but marking them as
+            deleted with a specific column).
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">11</td>
       <td valign="top">
-        <a href="https://www.firebase.com/blog/2013-03-25-where-does-firebase-fit.html">Where does Firebase fit in your app?</a>
+        <a href="https://www.firebase.com/blog/2013-03-25-where-does-firebase-fit.html">Where does Firebase fit in your app?</a>, last consulted november 22th, 2014.
       </td>
       <td valign="top"></td>
       <td valign="top"></td>
