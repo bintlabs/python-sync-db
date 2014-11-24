@@ -112,6 +112,20 @@ def compress():
                     "for absence of backing object" % (operation, model.__name__))
                 session.delete(operation)
                 continue
+        if operation.command == 'u':
+            subsequent = session.query(Operation).\
+                filter(Operation.content_type_id == operation.content_type_id,
+                       Operation.version_id == None,
+                       Operation.row_id == operation.row_id,
+                       Operation.order > operation.order).all()
+            if any(op.command == 'i' for op in subsequent) and \
+                    all(op.command != 'd' for op in subsequent):
+                logger.warning(
+                    "deleting update operation %s for model %s "
+                    "for preceding an insert operation" %\
+                        (operation, model.__name__))
+                session.delete(operation)
+                continue
         if session.query(Operation).\
                 filter(Operation.content_type_id == operation.content_type_id,
                        Operation.command == operation.command,

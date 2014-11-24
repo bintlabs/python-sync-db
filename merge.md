@@ -874,44 +874,181 @@ Findings
     <tr>
       <td valign="top">11</td>
       <td valign="top">
-        <a href="https://www.firebase.com/blog/2013-03-25-where-does-firebase-fit.html">Where does Firebase fit in your app?</a>, last consulted november 22th, 2014.
+        <p><a href="https://www.firebase.com/blog/2013-03-25-where-does-firebase-fit.html">Where
+        does Firebase fit in your app?</a>, last consulted november
+        23th, 2014.</p>
+        <p><a href="https://www.firebase.com/docs/web/guide/offline-capabilities.html">Offline
+        Capabilities - Firebase</a>, last consulted november 23th,
+        2014.</p>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        Firebase is a data store service that provides event-driven
+        libraries with synchronization capabilities. It’s specialized
+        in real-time updates, mobile and collaborative
+        applications. Three patterns for firebase usage are reviewed,
+        each with a different level of involvement in architecture.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            Firebase can act as a centralized data store for
+            applications that don’t require custom server-side
+            execution, allowing for fully client-side, multi-user,
+            distributed applications.
+          </li>
+          <li>
+            It can act as middleware between servers and client
+            devices, either as a message queue or persistence service.
+          </li>
+          <li>
+            It can also be adhered to an existing architecture by
+            implementing a subset of real-time features dependent on
+            it, leaving existing client-server infrastructure intact.
+          </li>
+          <li>
+            Firebase uses a local database as cache, and transitions
+            to a local exclusive mode of operation when a
+            disconnection occurs.
+          </li>
+          <li>
+            Synchronization is performed in a ‘best-effort’
+            manner. It’s implied that this means an always-automatic
+            never-failing conflict resolution strategy.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">12</td>
       <td valign="top">
         <a href="http://tools.ietf.org/html/rfc3501">Internet Message Access Protocol</a>
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        IMAP is a mail protocol and part of the suit of Internet
+        protocols. It includes considerations for mailbox
+        synchronization.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            IMAP requires well-formed, unique identifiers for
+            messages. Identifiers must be generated in ascending
+            order.
+          </li>
+          <li>
+            The main reference doesn’t include implementation details
+            as to how a disconnected client, or the server, may
+            compute deltas and issue correct synchronization
+            commands. RFC 4549 includes implementation
+            recommendations.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">13</td>
       <td valign="top">
-        <a href="https://support.mozilla.org/en-US/kb/imap-synchronization">IMAP Synchronization | Thunderbird Help</a>
+        <a href="http://www.ietf.org/rfc/rfc4549.txt">Synchronization Operations for Disconnected IMAP4 Clients</a>, last consulted november 23th, 2014.
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        A detailed revision and implementation recommendations for
+        synchronization mechanisms in IMAP4 mail agents.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            As per the recommendation, the discovery of new messages
+            can be performed through a query that uses the property of
+            ascending order of message IDs.
+          </li>
+          <li>
+            Changes to old messages are detected by performing a state
+            query (FETCH FLAGS) of all message IDs known and detecting
+            differences locally.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">14</td>
       <td valign="top">
-        <a href="http://docs.datomic.com/architecture.html">Architecture Overview | Datomic</a>
+        <a href="http://docs.datomic.com/architecture.html">Architecture Overview | Datomic</a>, last consulted november 23th, 2014.
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        Datomic is a commercial distributed relational database that
+        stores data as <i>immutable facts</i>, or
+        transactions. Transactions are stored, and not performed until
+        the resulting values are requested, giving all stored tuples a
+        readable state history.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            The database state is dependent on time, as a parameter,
+            since all transactions up to a given time are
+            considered. All historic database states are thus stored.
+          </li>
+          <li>
+            The immutability of data allows for extensive caching in
+            client libraries, enhancing their performance
+            significantly since reads don’t require network traffic
+            after the application’s working set is cached.
+          </li>
+          <li>
+            Immutability of facts allows the database to store values
+            in shared data structures.
+          </li>
+          <li>
+            Transactions either succeed or fail atomically. Full ACID
+            compliance is ensured.
+          </li>
+        </ul>
+      </td>
     </tr>
     <tr>
       <td valign="top">15</td>
       <td valign="top">
-        <a href="https://www.dropbox.com/developers/datastore/docs/python">Python Datastore API documentation - Dropbox</a>
+        <a href="https://www.dropbox.com/developers/datastore/docs/python">Python Datastore API documentation - Dropbox</a>, last consulted november 23th, 2014.
       </td>
-      <td valign="top"></td>
-      <td valign="top"></td>
+      <td valign="top">
+        Dropbox Datastore is a library available for mobile, desktop
+        and server platforms that uses Dropbox’s servers to
+        synchronize simple relational databases.
+      </td>
+      <td valign="top">
+        <ul>
+          <li>
+            Some libraries provide automatic conflict resolution,
+            while other versions promote a mode of operation where
+            attempts of transactions are made until the transaction
+            succeeds or a maximum number of tries is reached.
+          </li>
+          <li>
+            When conflicts are detected, an encouraged way of
+            resolution is to roll back changes, apply deltas, and
+            finally re-apply changes manually.
+          </li>
+          <li>
+            The server reports conflicts and computes deltas. A client
+            can request deltas at any time.
+          </li>
+          <li>
+            A user and permission hierarchy is used, based on the
+            Dropbox service user accounts, and document ownership.
+          </li>
+          <li>
+            Record IDs are assigned automatically. All records have an
+            ID. IDs are alphanumeric values.
+          </li>
+          <li>
+            Dropbox Datastore is intended to be used for user-owned
+            data sets.
+          </li>
+          <li>
+            It’s not a fully SQL-compliant relational database.
+          </li>
+        </ul>
+      </td>
     </tr>
   </tbody>
 </table>
-
-TODO fill the table
