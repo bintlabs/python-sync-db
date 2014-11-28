@@ -5,6 +5,7 @@
 
 import datetime
 import base64
+import decimal
 
 from sqlalchemy import types
 from dbsync import core
@@ -35,6 +36,8 @@ def _encode_table(type_):
                               value.microsecond]
     elif isinstance(type_, types.LargeBinary):
         return base64.standard_b64encode
+    elif isinstance(type_, types.Numeric):
+        return str
     return identity
 
 #: Encodes a python value into a JSON-friendly python value.
@@ -62,6 +65,8 @@ def _decode_table(type_):
         return partial(apply, datetime.time)
     elif isinstance(type_, types.LargeBinary):
         return base64.standard_b64decode
+    elif isinstance(type_, types.Numeric):
+        return decimal.Decimal
     return identity
 
 #: Decodes a value coming from a JSON string into a richer python value.
