@@ -36,7 +36,7 @@ def _encode_table(type_):
                               value.microsecond]
     elif isinstance(type_, types.LargeBinary):
         return base64.standard_b64encode
-    elif isinstance(type_, types.Numeric):
+    elif isinstance(type_, types.Numeric) and type_.asdecimal:
         return str
     return identity
 
@@ -65,7 +65,7 @@ def _decode_table(type_):
         return partial(apply, datetime.time)
     elif isinstance(type_, types.LargeBinary):
         return base64.standard_b64decode
-    elif isinstance(type_, types.Numeric):
+    elif isinstance(type_, types.Numeric) and type_.asdecimal:
         return decimal.Decimal
     return identity
 
