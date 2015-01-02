@@ -58,8 +58,9 @@ def get_engine():
 
 class tracked_record(object):
 
-    def __setattr__(self, key, value):
-        raise AttributeError("class 'tracked_record' is immutable")
+    def __setattr__(self, *args):
+        raise AttributeError("'tracked_record' object is immutable")
+    __delattr__ = __setattr__
 
     def __init__(self, model=None, table=None, id=None):
         super(tracked_record, self).__setattr__('model', model)
