@@ -10,10 +10,7 @@ from dbsync.client.conflicts import (
 from tests.models import A, B, Base, Session
 
 def get_content_type_ids():
-    session = Session()
-    ct_a = session.query(models.ContentType).filter_by(model_name='A').first()
-    ct_b = session.query(models.ContentType).filter_by(model_name='B').first()
-    return (ct_a.content_type_id, ct_b.content_type_id)
+    return (core.synched_models.models[A].id, core.synched_models.models[B].id)
 
 ct_a_id, ct_b_id = get_content_type_ids()
 
@@ -77,12 +74,10 @@ def test_find_dependency_conflicts():
     addstuff()
     changestuff()
     session = Session()
-    content_types = session.query(models.ContentType).all()
     message_ops = create_fake_operations()
     conflicts = find_dependency_conflicts(
         message_ops,
         session.query(models.Operation).all(),
-        content_types,
         session)
     expected = [
         (message_ops[1], # a1

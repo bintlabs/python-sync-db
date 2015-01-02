@@ -5,12 +5,11 @@
 
 from sqlalchemy.schema import UniqueConstraint
 
-from dbsync.core import synched_models
 from dbsync.lang import *
 from dbsync.utils import get_pk, class_mapper, query_model, column_properties
 
 
-def find_unique_conflicts(push_message, content_types, session):
+def find_unique_conflicts(push_message, session):
     """
     Returns a list of conflicts caused by unique constraints in the
     given push message contrasted against the database. Each conflict
@@ -22,17 +21,9 @@ def find_unique_conflicts(push_message, content_types, session):
         new_values: tuple of values that can be used to update the
                     conflicting object.
     """
-    def get_model(operation):
-        return synched_models.get(
-            maybe(lookup(attr('content_type_id') == operation.content_type_id,
-                         content_types),
-                  attr('model_name'),
-                  None),
-            None)
-
     conflicts = []
 
-    for pk, model in ((op.row_id, get_model(op))
+    for pk, model in ((op.row_id, op.tracked_model)
                       for op in push_message.operations
                       if op.command != 'd'):
         if model is None: continue

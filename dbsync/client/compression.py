@@ -7,7 +7,7 @@ import warnings
 from dbsync.lang import *
 from dbsync.utils import get_pk, query_model
 from dbsync import core
-from dbsync.models import Version, Operation, ContentType
+from dbsync.models import Version, Operation
 from dbsync.logs import get_logger
 
 
@@ -23,14 +23,15 @@ def _assert_operation_sequence(seq, session=None):
     oldest.
     """
     message = "The sequence of operations for the given object "\
-        "<row_id: {0}, content_type_id: {1}> is inconsistent. "\
+        "<row_id: {0}, content_type_id: {1}, model: {2}> is inconsistent. "\
         "This might indicate external interference with the synchronization "\
         "model or, most commonly, the reuse of old primary keys by the "\
         "database engine. To function properly, the database engine must use "\
         "unique primary keys through the history of the table "\
-        "(e.g. using AUTO INCREMENT). Operations from old to new: {2}".\
+        "(e.g. using AUTO INCREMENT). Operations from old to new: {3}".\
         format(seq[0].row_id,
                seq[0].content_type_id,
+               seq[0].tracked_model,
                list(reversed(map(attr('command'), seq))))
 
     if not all(op.command == 'u' for op in seq[1:-1]):
@@ -91,14 +92,11 @@ def compress():
     session.flush()
 
     # repair inconsistencies
-    models = dict((ct.content_type_id,
-                   core.synched_models.get(ct.model_name, None))
-                  for ct in session.query(ContentType))
     for operation in session.query(Operation).\
             filter(Operation.version_id == None).\
             order_by(Operation.order.desc()).all():
         session.flush()
-        model = models.get(operation.content_type_id, None)
+        model = operation.tracked_model
         if not model:
             logger.error(
                 "operation linked to content type "
@@ -201,21 +199,16 @@ def unsynched_objects():
     """
     compress()
     session = core.Session()
-    cts = session.query(ContentType).all()
     ops = session.query(Operation).filter(Operation.version_id == None).all()
-    def getclass(ct_id):
-        class_ = core.synched_models.get(
-            maybe(lookup(attr('content_type_id') == ct_id, cts),
-                  attr('model_name'),
-                  None),
-            None)
+    def getclass(op):
+        class_ = op.tracked_model
         if class_ is None: return None
         if class_ not in core.pulled_models or class_ not in core.pushed_models:
             return None
         return class_
     triads = [
         (c, op.row_id, op.command)
-        for c, op in ((getclass(op.content_type_id), op) for op in ops)
+        for c, op in ((getclass(op), op) for op in ops)
         if c is not None]
     session.close()
     return triads

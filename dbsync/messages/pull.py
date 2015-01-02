@@ -18,7 +18,7 @@ from dbsync.core import (
     synched_models,
     pulled_models,
     get_latest_version_id)
-from dbsync.models import Operation, Version, ContentType
+from dbsync.models import Operation, Version
 from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
 
@@ -111,11 +111,10 @@ class PullMessage(BaseMessage):
 
         DEPRECATED in favor of `fill_for`
         """
-        mname = op.content_type.model_name
-        model = synched_models.get(mname, None)
+        model = op.tracked_model
         if model is None:
             raise ValueError("operation linked to model %s "\
-                                 "which isn't being tracked" % mname)
+                                 "which isn't being tracked" % model)
         if model not in pulled_models:
             return self
         closeit = session is None
@@ -131,7 +130,7 @@ class PullMessage(BaseMessage):
             self.add_object(obj)
             if swell:
                 # add parent objects to resolve possible conflicts in merge
-                for parent in parent_objects(obj, synched_models.values(),
+                for parent in parent_objects(obj, synched_models.models.keys(),
                                              session):
                     self.add_object(parent)
         if closeit:
@@ -150,13 +149,9 @@ class PullMessage(BaseMessage):
         DEPRECATED in favor of `fill_for`
         """
         for op in v.operations:
-            if op.content_type.model_name not in synched_models:
+            if op.content_type_id not in synched_models.ids:
                 raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked", op)
-        # if any(op.content_type.model_name not in synched_models
-        #        for op in v.operations):
-        #     raise ValueError("version includes operation linked "\
-        #                          "to model not currently being tracked", bad_op)
         closeit = session is None
         session = Session() if closeit else session
         self.versions.append(v)
@@ -184,7 +179,6 @@ class PullMessage(BaseMessage):
         """
         assert isinstance(request, PullRequestMessage), "invalid request"
         session = Session()
-        cts = session.query(ContentType).all()
         versions = session.query(Version)
         if request.latest_version_id is not None:
             versions = versions.\
@@ -192,12 +186,11 @@ class PullMessage(BaseMessage):
         for v in versions:
             self.versions.append(v)
             for op in v.operations:
-                mname = op.content_type.model_name
-                model = synched_models.get(mname, None)
+                model = op.tracked_model
                 if model is None:
                     session.close()
                     raise ValueError("operation linked to model %s "\
-                                         "which isn't being tracked" % mname)
+                                         "which isn't being tracked" % model)
                 if model not in pulled_models: continue
                 obj = query_model(session, model).\
                     filter_by(**{get_pk(model): op.row_id}).first() \
@@ -206,10 +199,10 @@ class PullMessage(BaseMessage):
                 if obj is None: continue
                 self.add_object(obj, include_extensions=include_extensions)
                 # add parent objects to resolve conflicts in merge
-                for parent in parent_objects(obj, synched_models.values(),
+                for parent in parent_objects(obj, synched_models.models.keys(),
                                              session, only_pk=True):
                     if swell or \
-                            any(local_op.references(parent, cts, synched_models)
+                            any(local_op.references(parent)
                                 for local_op in request.operations
                                 if local_op.command == 'd'):
                         session.expire(parent) # load all attributes at once
@@ -280,11 +273,10 @@ class PullRequestMessage(BaseMessage):
         """
         assert op.version_id is None, "the operation {0} is already versioned".\
             format(op)
-        mname = op.content_type.model_name
-        model = synched_models.get(mname, None)
+        model = op.tracked_model
         if model is None:
             raise ValueError("operation linked to model %s "\
-                                 "which isn't being tracked" % mname)
+                                 "which isn't being tracked" % model)
         if model not in pulled_models: return self
         self.operations.append(op)
         return self
@@ -298,7 +290,7 @@ class PullRequestMessage(BaseMessage):
         session = Session() if closeit else session
         operations = session.query(Operation).\
             filter(Operation.version_id == None).all()
-        if any(op.content_type.model_name not in synched_models
+        if any(op.content_type_id not in synched_models.ids
                for op in operations):
             if closeit: session.close()
             raise ValueError("version includes operation linked "\

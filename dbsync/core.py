@@ -12,7 +12,7 @@ from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, query_model, copy, null_mutex
-from dbsync.models import ContentType, Operation, Version
+from dbsync.models import Operation, Version
 from dbsync import dialects
 from dbsync.logs import get_logger
 
@@ -56,8 +56,46 @@ def get_engine():
     return _engine
 
 
+class tracked_record(object):
+
+    def __setattr__(self, key, value):
+        raise AttributeError("class 'tracked_record' is immutable")
+
+    def __init__(self, model=None, table=None, id=None):
+        super(tracked_record, self).__setattr__('model', model)
+        super(tracked_record, self).__setattr__('table', table)
+        super(tracked_record, self).__setattr__('id', id)
+
+null_model = tracked_record()
+
+def install(self, model):
+    """
+    Installs the model in synched_models, indexing by class, class
+    name, table name and content_type_id.
+    """
+    ct_id = make_content_type_id(model)
+    tname = model.__table__.name
+    record = tracked_record(model=model, table=tname, id=ct_id)
+    self.model_names[model.__name__] = record
+    self.models[model] = record
+    self.tables[tname] = record
+    self.ids[ct_id] = record
+
 #: Set of classes marked for synchronization and change tracking.
-synched_models = {}
+synched_models = type(
+    'synched_models',
+    (object,),
+    {'tables': dict(),
+     'models': dict(),
+     'model_names': dict(),
+     'ids': dict(),
+     'install': install})()
+
+def tracked_model(operation):
+    "Get's the tracked model (SA mapped class) for this operation."
+    return synched_models.ids.get(operation.content_type_id, null_model).model
+# Injects synched models lookup into the Operation class.
+Operation.tracked_model = property(tracked_model)
 
 
 #: Set of classes in *synched_models* that are subject to pull handling.
@@ -279,25 +317,26 @@ def with_transaction(include_extensions=True):
     return wrapper
 
 
+def make_content_type_id(model):
+    "Returns a content type id for the given model."
+    mname = model.__name__
+    tname = model.__table__.name
+    return zlib.crc32("{0}/{1}".format(mname, tname), 0) & 0xffffffff
+
+
 def generate_content_types():
     """
     Fills the content type table.
 
     Inserts content types into the internal table used to describe
     operations.
+
+    DEPRECATED since ContentType was removed.
     """
-    session = Session()
-    for mname, model in synched_models.iteritems():
-        tname = model.__table__.name
-        content_type_id = zlib.crc32("{0}/{1}".format(mname, tname), 0) \
-            & 0xffffffff
-        if session.query(ContentType).\
-                filter(ContentType.table_name == tname).count() == 0:
-            session.add(ContentType(table_name=tname,
-                                    model_name=mname,
-                                    content_type_id=content_type_id))
-    session.commit()
-    session.close()
+    logger.info("content types no longer live in database")
+    logger.info("in-memory content_type_ids:")
+    for ct_id, record in synched_models.ids.iteritems():
+        logger.info("{0} :\t{1}".format(ct_id, record.model.__name__))
 
 
 def is_synched(obj):
@@ -307,15 +346,12 @@ def is_synched(obj):
     Raises a TypeError if the given object is not being tracked
     (i.e. the content type doesn't exist).
     """
-    session = Session()
-    ct = session.query(ContentType).\
-        filter(ContentType.model_name == obj.__class__.__name__).first()
-    if ct is None:
-        session.close()
+    if type(obj) not in synched_models.models:
         raise TypeError("the given object of class {0} isn't being tracked".\
                             format(obj.__class__.__name__))
+    session = Session()
     last_op = session.query(Operation).\
-        filter(Operation.content_type_id == ct.content_type_id,
+        filter(Operation.content_type_id == synched_models.models[type(obj)].id,
                Operation.row_id == getattr(obj, get_pk(obj))).\
                order_by(Operation.order.desc()).first()
     result = last_op is None or last_op.version_id is not None

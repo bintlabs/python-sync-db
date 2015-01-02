@@ -6,7 +6,7 @@ import inspect
 
 from dbsync.lang import *
 from dbsync.utils import get_pk, properties_dict, construct_bare
-from dbsync.core import synched_models, model_extensions
+from dbsync.core import null_model, synched_models, model_extensions
 from dbsync import models
 from dbsync.messages.codecs import decode_dict, encode_dict
 
@@ -40,7 +40,8 @@ class ObjectType(object):
         return dict((k, getattr(self, k)) for k in self.__keys__)
 
     def to_mapped_object(self):
-        model = synched_models.get(self.__model_name__, None)
+        model = synched_models.model_names.\
+            get(self.__model_name__, null_model).model
         if model is None:
             raise TypeError(
                 "model {0} isn't being tracked".format(self.__model_name__))
@@ -120,9 +121,9 @@ class BaseMessage(object):
             self._from_raw(raw_data)
 
     def _from_raw(self, data):
-        getm = synched_models.get
+        getm = lambda k: synched_models.model_names.get(k, null_model).model
         for k, v, m in ifilter(lambda (k, v, m): m is not None,
-                               imap(lambda (k, v): (k, v, getm(k, None)),
+                               imap(lambda (k, v): (k, v, getm(k)),
                                     data['payload'].iteritems())):
             self.payload[k] = set(
                 map(lambda dict_: ObjectType(k, dict_[get_pk(m)], **dict_),
@@ -137,7 +138,7 @@ class BaseMessage(object):
         encoded = {}
         encoded['payload'] = {}
         for k, objects in self.payload.iteritems():
-            model = synched_models.get(k, None)
+            model = synched_models.model_names.get(k, null_model).model
             if model is not None:
                 encoded['payload'][k] = map(encode_dict(model),
                                             imap(method('to_dict'), objects))

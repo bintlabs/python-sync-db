@@ -11,7 +11,7 @@ from sqlalchemy import event
 from sqlalchemy.orm.session import Session as GlobalSession
 
 from dbsync import core
-from dbsync.models import Operation, ContentType
+from dbsync.models import Operation
 
 if core.mode == 'server':
     warnings.warn("don't import both client and server")
@@ -41,20 +41,6 @@ def empty_queue(*_):
         _operations_queue.pop()
 
 
-#: table name => content_type id
-cts_cache = {}
-
-def get_ct(tname, session):
-    in_cache = cts_cache.get(tname, None)
-    if in_cache is None:
-        ct = session.query(ContentType).\
-            filter(ContentType.table_name == tname).first()
-        if ct is not None:
-            cts_cache[tname] = ct.content_type_id
-            return ct.content_type_id
-    return in_cache
-
-
 def make_listener(command):
     "Builds a listener for the given command (i, u, d)."
     def listener(mapper, connection, target):
@@ -64,16 +50,15 @@ def make_listener(command):
             return
         session = core.Session()
         tname = mapper.mapped_table.name
-        ct = get_ct(tname, session)
-        if ct is None:
-            logging.error("you must register a content type for {0} "\
-                              "to keep track of operations".format(tname))
+        if tname not in core.synched_models.tables:
+            logging.error("you must track a mapped class to table {0} "\
+                              "to log operations".format(tname))
             return
         pk = getattr(target, mapper.primary_key[0].name)
         op = Operation(
             row_id=pk,
             version_id=None, # operation not yet versioned
-            content_type_id=ct,
+            content_type_id=core.synched_models.tables[tname].id,
             command=command)
         _operations_queue.append(op)
         session.close()
@@ -85,9 +70,9 @@ def _start_tracking(model, directions):
         core.pulled_models.add(model)
     if 'push' in directions:
         core.pushed_models.add(model)
-    if model.__name__ in core.synched_models:
+    if model in core.synched_models.models:
         return model
-    core.synched_models[model.__name__] = model
+    core.synched_models.install(model)
     if 'push' not in directions:
         return model # don't track operations for pull-only models
     event.listen(model, 'after_insert', make_listener('i'))

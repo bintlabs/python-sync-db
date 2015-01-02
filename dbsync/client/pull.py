@@ -10,7 +10,7 @@ from sqlalchemy.orm import make_transient
 from dbsync.lang import *
 from dbsync.utils import class_mapper, get_pk, query_model
 from dbsync import core
-from dbsync.models import ContentType, Operation
+from dbsync.models import Operation
 from dbsync.messages.pull import PullMessage, PullRequestMessage
 from dbsync.client.compression import compress, compressed_operations
 from dbsync.client.conflicts import (
@@ -26,27 +26,25 @@ from dbsync.client.net import post_request
 
 # Utilities specific to the merge
 
-def max_local(ct, session):
+def max_local(model, session):
     """
-    Returns the maximum value for the primary key of the given content
-    type in the local database.
+    Returns the maximum value for the primary key of the given model
+    in the local database.
     """
-    model = core.synched_models.get(ct.model_name)
     if model is None:
-        raise ValueError("can't find model for content type {0}".format(ct))
+        raise ValueError("null model given to max_local query")
     return session.query(func.max(getattr(model, get_pk(model)))).scalar()
 
 
-def max_remote(ct, container):
+def max_remote(model, container):
     """
-    Returns the maximum value for the primary key of the given content
-    type in the container.
+    Returns the maximum value for the primary key of the given model
+    in the container.
     """
-    return max(getattr(obj, get_pk(obj))
-               for obj in container.query(ct.model_name))
+    return max(getattr(obj, get_pk(obj)) for obj in container.query(model))
 
 
-def update_local_id(old_id, new_id, ct, content_types, session):
+def update_local_id(old_id, new_id, model, session):
     """
     Updates the tuple matching *old_id* with *new_id*, and updates all
     dependent tuples in other tables as well.
@@ -54,30 +52,25 @@ def update_local_id(old_id, new_id, ct, content_types, session):
     # Updating either the tuple or the dependent tuples first would
     # cause integrity violations if the transaction is flushed in
     # between. The order doesn't matter.
-    model = core.synched_models.get(ct.model_name)
     if model is None:
-        raise ValueError("can't find model for content type {0}".format(ct))
+        raise ValueError("null model given to update_local_id subtransaction")
     # must load fully, don't know yet why
     obj = query_model(session, model).\
         filter_by(**{get_pk(model): old_id}).first()
     setattr(obj, get_pk(model), new_id)
 
     # Then the dependent ones
-    def get_model(table):
-        return core.synched_models.get(
-            maybe(lookup(attr('table_name') == table.name, content_types),
-                  attr('model_name')),
-            None)
     related_tables = get_related_tables(model)
-    mapped_fks = ifilter(lambda (m, fks): m is not None and fks,
-                         [(get_model(t),
-                           get_fks(t, class_mapper(model).mapped_table))
-                          for t in related_tables])
+    mapped_fks = ifilter(
+        lambda (m, fks): m is not None and fks,
+        [(core.synched_models.tables.get(t.name, core.null_model).model,
+          get_fks(t, class_mapper(model).mapped_table))
+         for t in related_tables])
     for model, fks in mapped_fks:
         for fk in fks:
             for obj in query_model(session, model).filter_by(**{fk: old_id}):
                 setattr(obj, fk, new_id)
-    session.flush()  # raise integrity errors now
+    session.flush() # raise integrity errors now
 
 
 UniqueConstraintErrorEntry = collections.namedtuple(
@@ -117,8 +110,7 @@ def merge(pull_message, session=None):
     if not isinstance(pull_message, PullMessage):
         raise TypeError("need an instance of dbsync.messages.pull.PullMessage "
                         "to perform the local merge operation")
-    content_types = session.query(ContentType).all()
-    valid_cts = set(ct.content_type_id for ct in content_types)
+    valid_cts = set(ct for ct in core.synched_models.ids)
 
     compress()
     unversioned_ops = session.query(Operation).\
@@ -131,7 +123,7 @@ def merge(pull_message, session=None):
     # I) first phase: resolve unique constraint conflicts if
     # possible. Abort early if a human error is detected
     unique_conflicts, unique_errors = find_unique_conflicts(
-        pull_ops, unversioned_ops, content_types, pull_message, session)
+        pull_ops, unversioned_ops, pull_message, session)
 
     if unique_errors:
         raise UniqueConstraintError(unique_errors)
@@ -161,11 +153,11 @@ def merge(pull_message, session=None):
 
     # in which the delete operation is registered on the pull message
     dependency_conflicts = find_dependency_conflicts(
-        pull_ops, unversioned_ops, content_types, session)
+        pull_ops, unversioned_ops, session)
 
     # in which the delete operation was performed locally
     reversed_dependency_conflicts = find_reversed_dependency_conflicts(
-        pull_ops, unversioned_ops, content_types, pull_message)
+        pull_ops, unversioned_ops, pull_message)
 
     insert_conflicts = find_insert_conflicts(pull_ops, unversioned_ops)
 
@@ -188,10 +180,8 @@ def merge(pull_message, session=None):
         can_perform = True
         # flag to detect the early exclusion of a remote operation
         reverted = False
-        # the content type and class of the operation
-        ct = lookup(attr('content_type_id') == pull_op.content_type_id,
-                    content_types)
-        class_ = core.synched_models.get(ct.model_name, None)
+        # the class of the operation
+        class_ = pull_op.tracked_model
 
         direct = extract(pull_op, direct_conflicts)
         if direct:
@@ -231,25 +221,19 @@ def merge(pull_message, session=None):
         for local in reversed_dependency:
             # reinsert record
             local.command = 'i'
-            local.perform(content_types,
-                          core.synched_models,
-                          pull_message,
-                          session)
+            local.perform(pull_message, session)
             # delete trace of deletion
             purgelocal(local)
 
         insert = extract(pull_op, insert_conflicts)
         for local in insert:
             session.flush()
-            next_id = max(max_remote(ct, pull_message),
-                          max_local(ct, session)) + 1
-            update_local_id(local.row_id, next_id, ct, content_types, session)
+            next_id = max(max_remote(class_, pull_message),
+                          max_local(class_, session)) + 1
+            update_local_id(local.row_id, next_id, class_, session)
             local.row_id = next_id
         if can_perform:
-            pull_op.perform(content_types,
-                            core.synched_models,
-                            pull_message,
-                            session)
+            pull_op.perform(pull_message, session)
 
             session.flush()
 

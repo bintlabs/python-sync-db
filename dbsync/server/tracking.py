@@ -14,7 +14,7 @@ import warnings
 from sqlalchemy import event
 
 from dbsync import core
-from dbsync.models import Operation, ContentType, Version
+from dbsync.models import Operation, Version
 
 if core.mode == 'client':
     warnings.warn("don't import both server and client")
@@ -27,18 +27,16 @@ def make_listener(command):
         if not core.listening: return
         session = core.Session()
         tname = mapper.mapped_table.name
-        ct = session.query(ContentType).\
-            filter(ContentType.table_name == tname).first()
-        if ct is None:
-            logging.error("you must register a content type for {0} "\
-                              "to keep track of operations".format(tname))
+        if tname not in core.synched_models.tables:
+            logging.error("you must track a mapped class to table {0} "\
+                              "to log operations".format(tname))
             return
         # one version for each operation
         version = Version(created=datetime.datetime.now())
         pk = getattr(target, mapper.primary_key[0].name)
         op = Operation(
             row_id=pk,
-            content_type_id=ct.content_type_id,
+            content_type_id=core.synched_models.tables[tname].id,
             command=command)
         session.add(version)
         session.add(op)
@@ -53,9 +51,9 @@ def _start_tracking(model, directions):
         core.pulled_models.add(model)
     if 'push' in directions:
         core.pushed_models.add(model)
-    if model.__name__ in core.synched_models:
+    if model in core.synched_models.models:
         return model
-    core.synched_models[model.__name__] = model
+    core.synched_models.install(model)
     event.listen(model, 'after_insert', make_listener('i'))
     event.listen(model, 'after_update', make_listener('u'))
     event.listen(model, 'after_delete', make_listener('d'))

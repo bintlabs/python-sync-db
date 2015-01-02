@@ -28,14 +28,14 @@ def repair_database(message, latest_version_id, session=None):
         raise TypeError("need an instance of dbsync.messages.base.BaseMessage "\
                             "to perform the repair operation")
     # clear local database
-    for model in core.synched_models.itervalues():
+    for model in core.synched_models.models:
         session.query(model).delete(synchronize_session=False)
     # clear the local operations and versions
     session.query(Operation).delete(synchronize_session=False)
     session.query(Version).delete(synchronize_session=False)
     session.expire_all()
     # load the fetched database
-    for modelkey in core.synched_models:
+    for modelkey in core.synched_models.model_names:
         for obj in message.query(modelkey):
             session.add(obj)
     # load the new version, if any

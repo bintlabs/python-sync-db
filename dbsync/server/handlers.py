@@ -30,7 +30,6 @@ from dbsync import core
 from dbsync.models import (
     Version,
     Node,
-    ContentType,
     OperationError,
     Operation)
 from dbsync.messages.base import BaseMessage
@@ -46,7 +45,8 @@ logger = get_logger(__name__)
 
 def handle_query(data):
     "Responds to a query request."
-    model = core.synched_models.get(data.get('model', None), None)
+    model = core.synched_models.model_names.\
+        get(data.get('model', None), core.null_model).model
     if model is None: return None
     mname = model.__name__
     filters = dict((k, v) for k, v in ((k[len(mname) + 1:], v)
@@ -70,7 +70,7 @@ def handle_repair(data=None):
     session = core.Session()
     latest_version_id = core.get_latest_version_id(session)
     message = BaseMessage()
-    for model in core.synched_models.itervalues():
+    for model in core.synched_models.models.iterkeys():
         for obj in query_model(session, model):
             message.add_object(obj, include_extensions=include_extensions)
     response = message.to_json()
@@ -138,7 +138,7 @@ class PushRejected(Exception): pass
 class PullSuggested(PushRejected): pass
 
 
-#: Callbacks receive the session, the message, and the content_types.
+#: Callbacks receive the session and the message.
 before_push = EventRegister()
 after_push = EventRegister()
 
@@ -177,12 +177,11 @@ def handle_push(data, session=None):
     if not message.islegit(session):
         raise PushRejected("message isn't properly signed")
 
-    content_types = session.query(ContentType).all()
     for listener in before_push:
-        listener(session, message, content_types)
+        listener(session, message)
 
     # I) detect unique constraint conflicts and resolve them if possible
-    unique_conflicts = find_unique_conflicts(message, content_types, session)
+    unique_conflicts = find_unique_conflicts(message, session)
     conflicting_objects = set()
     for uc in unique_conflicts:
         obj = uc['object']
@@ -204,11 +203,7 @@ def handle_push(data, session=None):
     # II) perform the operations
     try:
         for op in message.operations:
-            op.perform(content_types,
-                       core.synched_models,
-                       message,
-                       session,
-                       message.node_id)
+            op.perform(message, session, message.node_id)
     except OperationError as e:
         logger.warning(u"Couldn't perform operation in push from node %s.",
                        message.node_id)
@@ -229,7 +224,7 @@ def handle_push(data, session=None):
         session.flush()
 
     for listener in after_push:
-        listener(session, message, content_types)
+        listener(session, message)
 
     # return the new version id back to the node
     return {'new_version_id': version.version_id}

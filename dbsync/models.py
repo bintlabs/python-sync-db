@@ -29,20 +29,6 @@ class PrefixTables(DeclarativeMeta):
 Base = declarative_base(metaclass=PrefixTables)
 
 
-class ContentType(Base):
-    "A weak abstraction over a database table."
-
-    __tablename__ = "content_types"
-
-    content_type_id = Column(BigInteger, primary_key=True)
-    table_name = Column(String(500))
-    model_name = Column(String(500))
-
-    def __repr__(self):
-        return u"<ContentType id: {0}, table_name: {1}, model_name: {2}>".\
-            format(self.content_type_id, self.table_name, self.model_name)
-
-
 class Node(Base):
     """
     A node registry.
@@ -108,14 +94,12 @@ class Operation(Base):
         Integer,
         ForeignKey(Version.__tablename__ + ".version_id"),
         nullable=True)
-    content_type_id = Column(
-        BigInteger, ForeignKey(ContentType.__tablename__ + ".content_type_id"))
+    content_type_id = Column(BigInteger)
     command = Column(String(1))
     command_options = ('i', 'u', 'd')
     order = Column(Integer, primary_key=True)
 
     version = relationship(Version, backref=backref("operations", lazy="joined"))
-    content_type = relationship(ContentType, backref="operations", lazy="joined")
 
     @validates('command')
     def validate_command(self, key, command):
@@ -123,31 +107,22 @@ class Operation(Base):
         return command
 
     def __repr__(self):
-        return u"<Operation row_id: {0}, content_type_id: {1}, command: {2}>".\
-            format(self.row_id, self.content_type_id, self.command)
+        return u"<Operation row_id: {0}, model: {1}, command: {2}>".\
+            format(self.row_id, self.tracked_model, self.command)
 
-    def references(self, obj, content_types, synched_models):
-        """
-        Whether this operation references the given object or not.
-
-        This procedure performs the lookups on the given
-        *content_types* and *synched_models*.
-        """
+    def references(self, obj):
+        "Whether this operation references the given object or not."
         if self.row_id != getattr(obj, get_pk(obj), None):
             return False
-        ct = lookup(attr('content_type_id') == self.content_type_id,
-                    content_types)
-        if ct is None:
+        model = self.tracked_model
+        if model is None:
             return False # operation doesn't even refer to a tracked model
-        model = synched_models.get(ct.model_name, None)
         return model is type(obj)
 
-    def perform(operation, content_types, synched_models, container, session,
-                node_id=None):
+    def perform(operation, container, session, node_id=None):
         """
-        Performs *operation*, looking for required data and metadata
-        in *content_types*, *synched_models*, and *container*, and
-        using *session* to perform it.
+        Performs *operation*, looking for required data in
+        *container*, and using *session* to perform it.
 
         *container* is an instance of
         dbsync.messages.base.BaseMessage.
@@ -158,13 +133,9 @@ class Operation(Base):
         If at any moment this operation fails for predictable causes,
         it will raise an *OperationError*.
         """
-        ct = lookup(attr('content_type_id') == operation.content_type_id,
-                    content_types)
-        if ct is None:
-            raise OperationError("no content type for this operation", operation)
-        model = synched_models.get(ct.model_name, None)
+        model = operation.tracked_model
         if model is None:
-            raise OperationError("no model for this operation", operation)
+            raise OperationError("no content type for this operation", operation)
 
         if operation.command == 'i':
             obj = query_model(session, model).\

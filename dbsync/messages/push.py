@@ -140,11 +140,10 @@ class PushMessage(BaseMessage):
             self.key == hashlib.sha512(node.secret + self._portion()).hexdigest()
 
     def _add_operation(self, op, session):
-        mname = op.content_type.model_name
-        model = synched_models.get(mname, None)
+        model = op.tracked_model
         if model is None:
             raise ValueError("operation linked to model %s "\
-                                 "which isn't being tracked" % mname)
+                                 "which isn't being tracked" % model)
         if model not in pushed_models: return self
         obj = query_model(session, model).\
             filter_by(**{get_pk(model): op.row_id}).first() \
@@ -154,9 +153,6 @@ class PushMessage(BaseMessage):
             self.add_object(obj)
             # parent objects aren't added, because the merge (and it's
             # conflicts) ocurr solely on the pull operation
-
-            # for parent in parent_objects(obj, synched_models.values(), session):
-            #     self.add_object(parent)
         return self
 
     def add_unversioned_operations(self, session=None):
@@ -168,7 +164,7 @@ class PushMessage(BaseMessage):
         session = Session() if closeit else session
         operations = session.query(Operation).\
             filter(Operation.version_id == None).all()
-        if any(op.content_type.model_name not in synched_models
+        if any(op.content_type_id not in synched_models.ids
                for op in operations):
             if closeit: session.close()
             raise ValueError("version includes operation linked "\
