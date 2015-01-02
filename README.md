@@ -159,15 +159,13 @@ class Person(Base):
 ```
 
 After you've marked all the models you want tracked, you need to
-generate the metadata for them, explicitly. You can do this once, or
-every time the application is started, since it's (should be)
-idempotent.
+generate the logging infrastructure, explicitly. You can do this once,
+or every time the application is started, since it's idempotent.
 
 ```python
 import dbsync
 
 dbsync.create_all()
-dbsync.generate_content_types()
 ```
 
 Next you should register your client application in the server. To do
