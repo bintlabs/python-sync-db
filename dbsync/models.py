@@ -95,6 +95,7 @@ class Operation(Base):
         ForeignKey(Version.__tablename__ + ".version_id"),
         nullable=True)
     content_type_id = Column(BigInteger)
+    tracked_model = None # to be injected
     command = Column(String(1))
     command_options = ('i', 'u', 'd')
     order = Column(Integer, primary_key=True)

@@ -92,6 +92,7 @@ synched_models = type(
      'ids': dict(),
      'install': install})()
 
+
 def tracked_model(operation):
     "Get's the tracked model (SA mapped class) for this operation."
     return synched_models.ids.get(operation.content_type_id, null_model).model
