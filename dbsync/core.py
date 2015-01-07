@@ -335,10 +335,10 @@ def generate_content_types():
 
     DEPRECATED since ContentType was removed.
     """
-    logger.info("content types no longer live in database")
-    logger.info("in-memory content_type_ids:")
-    for ct_id, record in synched_models.ids.iteritems():
-        logger.info("{0} :\t{1}".format(ct_id, record.model.__name__))
+    logger.warning("content types no longer live in database")
+    logger.warning("in-memory content_type_ids:\n{0}".format(
+            "\n".join("{0} :\t{1}".format(ct_id, record.model.__name__)
+                      for ct_id, record in synched_models.ids.iteritems())))
 
 
 def is_synched(obj):
