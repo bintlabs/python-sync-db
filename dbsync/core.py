@@ -62,9 +62,8 @@ class tracked_record(object):
         raise AttributeError("'tracked_record' object is immutable")
     __delattr__ = __setattr__
 
-    def __init__(self, model=None, table=None, id=None):
+    def __init__(self, model=None, id=None):
         super(tracked_record, self).__setattr__('model', model)
-        super(tracked_record, self).__setattr__('table', table)
         super(tracked_record, self).__setattr__('id', id)
 
 null_model = tracked_record()
@@ -76,7 +75,7 @@ def install(self, model):
     """
     ct_id = make_content_type_id(model)
     tname = model.__table__.name
-    record = tracked_record(model=model, table=tname, id=ct_id)
+    record = tracked_record(model=model, id=ct_id)
     self.model_names[model.__name__] = record
     self.models[model] = record
     self.tables[tname] = record
