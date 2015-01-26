@@ -139,7 +139,7 @@ class PushMessage(BaseMessage):
         return node is not None and \
             self.key == hashlib.sha512(node.secret + self._portion()).hexdigest()
 
-    def _add_operation(self, op, session):
+    def _add_operation(self, op, session, include_extensions=True):
         model = op.tracked_model
         if model is None:
             raise ValueError("operation linked to model %s "\
@@ -150,12 +150,12 @@ class PushMessage(BaseMessage):
             if op.command != 'd' else None
         self.operations.append(op)
         if obj is not None:
-            self.add_object(obj)
+            self.add_object(obj, include_extensions=include_extensions)
             # parent objects aren't added, because the merge (and it's
             # conflicts) ocurr solely on the pull operation
         return self
 
-    def add_unversioned_operations(self, session=None):
+    def add_unversioned_operations(self, session=None, include_extensions=True):
         """
         Adds all unversioned operations to this message, including the
         required objects for them to be performed.
@@ -170,7 +170,7 @@ class PushMessage(BaseMessage):
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
         for op in operations:
-            self._add_operation(op, session)
+            self._add_operation(op, session, include_extensions=include_extensions)
         if closeit:
             session.close()
         if self.key is not None:

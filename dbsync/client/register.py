@@ -62,7 +62,7 @@ def isregistered():
 def get_node():
     "Returns the node register info for the actual client."
     session = core.Session()
-    result = session.query(Node).first()
+    result = session.query(Node).order_by(Node.node_id.desc()).first()
     session.close()
     return result
 
