@@ -210,8 +210,8 @@ def handle_push(data, session=None):
                        session,
                        message.node_id)
     except OperationError as e:
-        logger.warning(u"Couldn't perform operation in push from node %s.",
-                       message.node_id)
+        logger.exception(u"Couldn't perform operation in push from node %s.",
+                         message.node_id)
         raise PushRejected("at least one operation couldn't be performed",
                            *e.args)
 
