@@ -50,7 +50,8 @@ def empty_queue(*args):
 def make_listener(command):
     "Builds a listener for the given command (i, u, d)."
     def listener(mapper, connection, target):
-        if getattr(target, core.INTERNAL_OBJECT_ATTR, False) or \
+        if getattr(core.SessionClass.object_session(target),
+                   core.INTERNAL_SESSION_ATTR, False) or \
                 not core.listening:
             return
         if command == 'u' and not core.SessionClass.object_session(target).\

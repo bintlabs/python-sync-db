@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, query_model, copy, QueryWrapper
+from dbsync.utils import get_pk, query_model, copy
 from dbsync.models import Operation, Version
 from dbsync import dialects
 from dbsync.logs import get_logger
@@ -21,7 +21,6 @@ logger = get_logger(__name__)
 
 
 INTERNAL_SESSION_ATTR = '_dbsync_internal'
-INTERNAL_OBJECT_ATTR = '_dbsync_internal'
 
 
 SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
@@ -30,13 +29,6 @@ def Session():
     s._model_changes = dict() # for flask-sqlalchemy
     setattr(s, INTERNAL_SESSION_ATTR, True) # used to disable listeners
     return s
-
-
-@guard
-def process_object(obj):
-    setattr(obj, INTERNAL_OBJECT_ATTR, True)
-    return obj
-QueryWrapper.process = staticmethod(process_object)
 
 
 #: The internal use mode, used to prevent client-server module
