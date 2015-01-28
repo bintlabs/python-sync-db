@@ -24,7 +24,9 @@ core.mode = 'server'
 def make_listener(command):
     "Builds a listener for the given command (i, u, d)."
     def listener(mapper, connection, target):
-        if not core.listening: return
+        if getattr(target, core.INTERNAL_OBJECT_ATTR, False) or \
+                not core.listening:
+            return
         session = core.Session()
         tname = mapper.mapped_table.name
         if tname not in core.synched_models.tables:

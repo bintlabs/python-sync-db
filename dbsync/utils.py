@@ -53,6 +53,46 @@ def types_dict(sa_class):
                 if isinstance(prop, ColumnProperty))
 
 
+class QueryWrapper(object):
+    "Yields post-processed objects."
+
+    @staticmethod
+    def process(obj):
+        "This function should be overwritten."
+        return obj
+
+    def __init__(self, query):
+        self._query = query
+
+    def filter(self, *args, **kwargs):
+        return QueryWrapper(self._query.filter(*args, **kwargs))
+
+    def filter_by(self, *args, **kwargs):
+        return QueryWrapper(self._query.filter_by(*args, **kwargs))
+
+    def order_by(self, *args, **kwargs):
+        return QueryWrapper(self._query.order_by(*args, **kwargs))
+
+    def options(self, *args, **kwargs):
+        return QueryWrapper(self._query.options(*args, **kwargs))
+
+    def count(self, *args, **kwargs):
+        return self._query.count(*args, **kwargs)
+
+    def first(self, *args, **kwargs):
+        return QueryWrapper.process(self._query.first(*args, **kwargs))
+
+    def one(self, *args, **kwargs):
+        return QueryWrapper.process(self._query.one(*args, **kwargs))
+
+    def __iter__(self):
+        for obj in self._query:
+            yield QueryWrapper.process(obj)
+
+    def all(self, *args, **kwargs):
+        return map(QueryWrapper.process, self._query.all(*args, **kwargs))
+
+
 def construct_bare(class_):
     """
     Returns an object of type *class_*, without invoking the class'
@@ -61,7 +101,7 @@ def construct_bare(class_):
     obj = class_.__new__(class_)
     manager = getattr(class_, instrumentation.ClassManager.MANAGER_ATTR)
     setattr(obj, manager.STATE_ATTR, state.InstanceState(obj, manager))
-    return obj
+    return QueryWrapper.process(obj)
 
 
 def object_from_dict(class_, dict_):
@@ -122,7 +162,7 @@ def query_model(session, sa_class, only_pk=False):
             for prop in class_mapper(sa_class).iterate_properties
             if isinstance(prop, ColumnProperty)
             if prop.key != pk)
-    return session.query(sa_class).options(*opts)
+    return QueryWrapper(session.query(sa_class).options(*opts))
 
 
 class EventRegister(object):
@@ -140,11 +180,3 @@ class EventRegister(object):
         if listener not in self._listeners:
             self._listeners.append(listener)
         return listener
-
-
-class null_mutex(object):
-    "A context manager that does nothing."
-
-    def __enter__(self): pass
-
-    def __exit__(self, *args, **kwargs): pass

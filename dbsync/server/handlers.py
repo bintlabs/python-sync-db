@@ -79,7 +79,6 @@ def handle_repair(data=None):
     return response
 
 
-@core.with_listening(False)
 @core.with_transaction()
 def handle_register(user_id=None, node_id=None, session=None):
     """
@@ -143,7 +142,6 @@ before_push = EventRegister()
 after_push = EventRegister()
 
 
-@core.with_listening(False)
 @core.with_transaction()
 def handle_push(data, session=None):
     """
@@ -164,7 +162,7 @@ def handle_push(data, session=None):
     latest_version_id = core.get_latest_version_id(session)
     if latest_version_id != message.latest_version_id:
         exc = "version identifier isn't the latest one; "\
-            "given: %d" % message.latest_version_id
+            "given: %s" % message.latest_version_id
         if latest_version_id is None:
             raise PushRejected(exc)
         if message.latest_version_id is None:

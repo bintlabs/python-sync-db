@@ -9,7 +9,6 @@ from dbsync import core
 from dbsync.models import Node, Version
 from dbsync.messages.push import PushMessage
 from dbsync.client.compression import compress
-from dbsync.client.register import get_node
 from dbsync.client.net import post_request
 
 
@@ -23,9 +22,18 @@ suggests_pull = None
 
 
 @core.with_transaction()
-def request_push(push_url, message, extra_data=None,
+def request_push(push_url,
+                 extra_data=None,
                  encode=None, decode=None, headers=None, timeout=None,
+                 extensions=True,
                  session=None):
+    message = PushMessage()
+    message.latest_version_id = core.get_latest_version_id(session)
+    compress(session)
+    message.add_unversioned_operations(
+        session=session, include_extensions=extensions)
+    message.set_node(session.query(Node).order_by(Node.node_id.desc()).first())
+
     data = message.to_json()
     data.update({'extra_data': extra_data or {}})
 
@@ -48,7 +56,7 @@ def request_push(push_url, message, extra_data=None,
     session.add(
         Version(version_id=new_version_id, created=datetime.datetime.now()))
     for op in message.operations:
-        session.merge(op).version_id = new_version_id
+        op.version_id = new_version_id
     # return the response for the programmer to do what she wants
     # afterwards
     return response
@@ -81,13 +89,10 @@ def push(push_url, extra_data=None,
     assert bool(push_url), "push url can't be empty"
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
-    message = PushMessage()
-    message.latest_version_id = core.get_latest_version_id()
-    compress()
-    message.add_unversioned_operations(include_extensions=include_extensions)
-    message.set_node(get_node())
 
     return request_push(
-        push_url, message, extra_data=extra_data,
+        push_url,
+        extra_data=extra_data,
         encode=encode, decode=decode, headers=headers, timeout=timeout,
+        extensions=include_extensions,
         include_extensions=include_extensions)
