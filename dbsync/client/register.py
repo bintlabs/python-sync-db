@@ -15,7 +15,6 @@ from dbsync.client.net import post_request
 class RegisterRejected(Exception): pass
 
 
-@core.with_listening(False)
 @core.with_transaction()
 def register(registry_url, extra_data=None,
              encode=None, decode=None, headers=None, timeout=None,

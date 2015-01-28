@@ -22,9 +22,12 @@ core.mode = 'client'
 _operations_queue = deque()
 
 
-def flush_operations(_):
+def flush_operations(session):
     "Flush operations after a commit has been issued."
-    if not _operations_queue or not core.listening: return
+    if not _operations_queue or \
+            getattr(session, core.INTERNAL_SESSION_ATTR, False) or \
+            not core.listening:
+        return
     session = core.Session()
     while _operations_queue:
         op = _operations_queue.popleft()
@@ -34,9 +37,12 @@ def flush_operations(_):
     session.close()
 
 
-def empty_queue(*_):
+def empty_queue(*args):
     "Empty the operations queue."
-    if not core.listening: return
+    session = None if not args else args[0]
+    if getattr(session, core.INTERNAL_SESSION_ATTR, False) or \
+            not core.listening:
+        return
     while _operations_queue:
         _operations_queue.pop()
 
@@ -58,7 +64,9 @@ def get_ct(tname, session):
 def make_listener(command):
     "Builds a listener for the given command (i, u, d)."
     def listener(mapper, connection, target):
-        if not core.listening: return
+        if getattr(target, core.INTERNAL_OBJECT_ATTR, False) or \
+                not core.listening:
+            return
         if command == 'u' and not core.SessionClass.object_session(target).\
                 is_modified(target, include_collections=False):
             return

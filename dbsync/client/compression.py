@@ -54,7 +54,7 @@ def _assert_operation_sequence(seq, session=None):
                 seq)
 
 
-def compress():
+def compress(session=None):
     """
     Compresses unversioned operations in the database.
 
@@ -64,7 +64,8 @@ def compress():
     This procedure is called internally before the 'push' request
     happens, and before the local 'merge' happens.
     """
-    session = core.Session()
+    closeit = session is None
+    session = session if not closeit else core.Session()
     unversioned = session.query(Operation).\
         filter(Operation.version_id == None).order_by(Operation.order.desc())
     seqs = group_by(lambda op: (op.row_id, op.content_type_id), unversioned)
@@ -138,8 +139,15 @@ def compress():
                     (operation, model.__name__))
             session.delete(operation)
             continue
-    session.commit()
-    session.close()
+    result = session.query(Operation).\
+        filter(Operation.version_id == None).\
+        order_by(Operation.order.asc()).all()
+    if closeit:
+        session.commit()
+        session.close()
+    else:
+        session.flush()
+    return result
 
 
 def compressed_operations(operations):
@@ -199,10 +207,9 @@ def unsynched_objects():
     Because of compatibility issues, this procedure will only return
     triads for classes marked for both push and pull handling.
     """
-    compress()
     session = core.Session()
+    ops = compress(session)
     cts = session.query(ContentType).all()
-    ops = session.query(Operation).filter(Operation.version_id == None).all()
     def getclass(ct_id):
         class_ = core.synched_models.get(
             maybe(lookup(attr('content_type_id') == ct_id, cts),
@@ -217,6 +224,7 @@ def unsynched_objects():
         (c, op.row_id, op.command)
         for c, op in ((getclass(op.content_type_id), op) for op in ops)
         if c is not None]
+    session.commit()
     session.close()
     return triads
 

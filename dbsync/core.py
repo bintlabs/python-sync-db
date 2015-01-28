@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, query_model, copy, null_mutex
+from dbsync.utils import get_pk, query_model, copy, QueryWrapper
 from dbsync.models import ContentType, Operation, Version
 from dbsync import dialects
 from dbsync.logs import get_logger
@@ -20,11 +20,23 @@ from dbsync.logs import get_logger
 logger = get_logger(__name__)
 
 
+INTERNAL_SESSION_ATTR = '_dbsync_internal'
+INTERNAL_OBJECT_ATTR = '_dbsync_internal'
+
+
 SessionClass = sessionmaker(autoflush=False, expire_on_commit=False)
 def Session():
     s = SessionClass(bind=get_engine())
     s._model_changes = dict() # for flask-sqlalchemy
+    setattr(s, INTERNAL_SESSION_ATTR, True) # used to disable listeners
     return s
+
+
+@guard
+def process_object(obj):
+    setattr(obj, INTERNAL_OBJECT_ATTR, True)
+    return obj
+QueryWrapper.process = staticmethod(process_object)
 
 
 #: The internal use mode, used to prevent client-server module
@@ -154,39 +166,22 @@ def delete_extensions(old_obj, new_obj):
                     u"Couldn't delete extension %s for object %s", field, new_obj)
 
 
-class _ListeningFlag(object):
-
-    def __init__(self, state):
-        self.state = state
-        self._mutex = null_mutex
-
-    def __nonzero__(self):
-        return bool(self.state)
-
-    @property
-    def mutex(self):
-        return self._mutex()
-
-    @mutex.setter
-    def mutex(self, m):
-        self._mutex = (lambda: m) if \
-            not inspect.isclass(m) and \
-            not inspect.isroutine(m) and \
-            not hasattr(m, '__call__') \
-            else m
-
 #: Toggled variable used to disable listening to operations momentarily.
-listening = _ListeningFlag(True)
+listening = True
 
 
 def toggle_listening(enabled=None):
     """
     Change the listening state.
 
-    If set to ``False``, no operations will be registered. This is
-    used in the conflict resolution phase.
+    If set to ``False``, no operations will be registered. This can be
+    used to disable dbsync temporarily, in scripts or blocks that
+    execute in a single-threaded environment.
     """
-    listening.state = enabled if enabled is not None else not listening
+    global listening
+    listening = enabled if enabled is not None else not listening
+    if not listening:
+        logger.warning("dbsync is disabled; listening is set to False")
 
 
 def with_listening(enabled):
@@ -200,8 +195,7 @@ def with_listening(enabled):
             prev = bool(listening)
             toggle_listening(enabled)
             try:
-                with listening.mutex:
-                    return proc(*args, **kwargs)
+                return proc(*args, **kwargs)
             finally:
                 toggle_listening(prev)
         return wrapped

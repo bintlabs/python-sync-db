@@ -106,7 +106,6 @@ class UniqueConstraintError(Exception):
     def __str__(self): return repr(self)
 
 
-@core.with_listening(False)
 @core.with_transaction()
 def merge(pull_message, session=None):
     """
@@ -120,10 +119,7 @@ def merge(pull_message, session=None):
     content_types = session.query(ContentType).all()
     valid_cts = set(ct.content_type_id for ct in content_types)
 
-    compress()
-    unversioned_ops = session.query(Operation).\
-        filter(Operation.version_id == None).\
-        order_by(Operation.order.asc()).all()
+    unversioned_ops = compress(session)
     pull_ops = filter(attr('content_type_id').in_(valid_cts),
                       pull_message.operations)
     pull_ops = compressed_operations(pull_ops)
@@ -289,9 +285,8 @@ def pull(pull_url, extra_data=None,
     assert bool(pull_url), "pull url can't be empty"
     if extra_data is not None:
         assert isinstance(extra_data, dict), "extra data must be a dictionary"
-    compress()
     request_message = PullRequestMessage()
-    request_message.add_unversioned_operations()
+    for op in compress(): request_message.add_operation(op)
     data = request_message.to_json()
     data.update({'extra_data': extra_data or {}})
 

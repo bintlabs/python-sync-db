@@ -273,7 +273,7 @@ class PullRequestMessage(BaseMessage):
             self.latest_version_id)
         return encoded
 
-    def _add_operation(self, op):
+    def add_operation(self, op):
         """
         Adds an operation to the message, including the required
         object if possible.
@@ -304,7 +304,7 @@ class PullRequestMessage(BaseMessage):
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
         for op in operations:
-            self._add_operation(op)
+            self.add_operation(op)
         if closeit:
             session.close()
         return self

@@ -21,7 +21,6 @@ from dbsync.messages.base import BaseMessage
 from dbsync.client.net import get_request
 
 
-@core.with_listening(False)
 @core.with_transaction()
 def repair_database(message, latest_version_id, session=None):
     if not isinstance(message, BaseMessage):
