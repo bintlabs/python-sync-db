@@ -12,6 +12,11 @@ from sqlalchemy.orm.session import Session as GlobalSession
 
 from dbsync import core
 from dbsync.models import Operation
+from dbsync.logs import get_logger
+
+
+logger = get_logger(__name__)
+
 
 if core.mode == 'server':
     warnings.warn("don't import both client and server")
@@ -22,26 +27,28 @@ core.mode = 'client'
 _operations_queue = deque()
 
 
-def flush_operations(session):
+def flush_operations(committed_session):
     "Flush operations after a commit has been issued."
     if not _operations_queue or \
-            getattr(session, core.INTERNAL_SESSION_ATTR, False) or \
-            not core.listening:
+            getattr(committed_session, core.INTERNAL_SESSION_ATTR, False):
         return
-    session = core.Session()
-    while _operations_queue:
-        op = _operations_queue.popleft()
-        session.add(op)
-        session.flush()
-    session.commit()
-    session.close()
+    if not core.listening:
+        logger.warning("dbsync is disabled; aborting flush_operations")
+        return
+    with core.committing_context() as session:
+        while _operations_queue:
+            op = _operations_queue.popleft()
+            session.add(op)
+            session.flush()
 
 
 def empty_queue(*args):
     "Empty the operations queue."
     session = None if not args else args[0]
-    if getattr(session, core.INTERNAL_SESSION_ATTR, False) or \
-            not core.listening:
+    if getattr(session, core.INTERNAL_SESSION_ATTR, False):
+        return
+    if not core.listening:
+        logger.warning("dbsync is disabled; aborting empty_queue")
         return
     while _operations_queue:
         _operations_queue.pop()
@@ -51,13 +58,16 @@ def make_listener(command):
     "Builds a listener for the given command (i, u, d)."
     def listener(mapper, connection, target):
         if getattr(core.SessionClass.object_session(target),
-                   core.INTERNAL_SESSION_ATTR, False) or \
-                not core.listening:
+                   core.INTERNAL_SESSION_ATTR,
+                   False):
+            return
+        if not core.listening:
+            logger.warning("dbsync is disabled; "
+                           "aborting listener to '{0}' command".format(command))
             return
         if command == 'u' and not core.SessionClass.object_session(target).\
                 is_modified(target, include_collections=False):
             return
-        session = core.Session()
         tname = mapper.mapped_table.name
         if tname not in core.synched_models.tables:
             logging.error("you must track a mapped class to table {0} "\
@@ -70,7 +80,6 @@ def make_listener(command):
             content_type_id=core.synched_models.tables[tname].id,
             command=command)
         _operations_queue.append(op)
-        session.close()
     return listener
 
 

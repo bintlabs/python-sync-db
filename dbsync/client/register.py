@@ -47,32 +47,26 @@ def register(registry_url, extra_data=None,
     return response
 
 
-def isregistered():
+@core.session_closing
+def isregistered(session=None):
     """
     Checks whether this client application has at least one node
     registry.
     """
-    session = core.Session()
-    result = session.query(Node).first() is not None
-    session.close()
-    return result
+    return session.query(Node).first() is not None
 
 
-def get_node():
+@core.session_closing
+def get_node(session=None):
     "Returns the node register info for the actual client."
-    session = core.Session()
-    result = session.query(Node).order_by(Node.node_id.desc()).first()
-    session.close()
-    return result
+    return session.query(Node).order_by(Node.node_id.desc()).first()
 
 
-def save_node(node_id, registered, register_user_id, secret):
+@core.session_committing
+def save_node(node_id, registered, register_user_id, secret, session=None):
     "Save node info into database without a server request."
-    session = core.Session()
     node = Node(node_id=node_id,
                 registered=registered,
                 registry_user_id=register_user_id,
                 secret=secret)
     session.add(node)
-    session.commit()
-    session.close()

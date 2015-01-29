@@ -15,6 +15,11 @@ from sqlalchemy import event
 
 from dbsync import core
 from dbsync.models import Operation, Version
+from dbsync.logs import get_logger
+
+
+logger = get_logger(__name__)
+
 
 if core.mode == 'client':
     warnings.warn("don't import both server and client")
@@ -23,15 +28,19 @@ core.mode = 'server'
 
 def make_listener(command):
     "Builds a listener for the given command (i, u, d)."
-    def listener(mapper, connection, target):
+    @core.session_committing
+    def listener(mapper, connection, target, session=None):
         if getattr(core.SessionClass.object_session(target),
-                   core.INTERNAL_SESSION_ATTR, False) or \
-                not core.listening:
+                   core.INTERNAL_SESSION_ATTR,
+                   False):
+            return
+        if not core.listening:
+            logger.warning("dbsync is disabled; "
+                           "aborting listener to '{0}' command".format(command))
             return
         if command == 'u' and not core.SessionClass.object_session(target).\
                 is_modified(target, include_collections=False):
             return
-        session = core.Session()
         tname = mapper.mapped_table.name
         if tname not in core.synched_models.tables:
             logging.error("you must track a mapped class to table {0} "\
@@ -47,8 +56,6 @@ def make_listener(command):
         session.add(version)
         session.add(op)
         op.version = version
-        session.commit()
-        session.close()
     return listener
 
 

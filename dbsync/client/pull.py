@@ -111,7 +111,7 @@ def merge(pull_message, session=None):
                         "to perform the local merge operation")
     valid_cts = set(ct for ct in core.synched_models.ids)
 
-    unversioned_ops = compress(session)
+    unversioned_ops = compress(session=session)
     pull_ops = filter(attr('content_type_id').in_(valid_cts),
                       pull_message.operations)
     pull_ops = compressed_operations(pull_ops)

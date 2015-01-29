@@ -55,6 +55,7 @@ def _assert_operation_sequence(seq, session=None):
                 seq)
 
 
+@core.session_committing
 def compress(session=None):
     """
     Compresses unversioned operations in the database.
@@ -65,8 +66,6 @@ def compress(session=None):
     This procedure is called internally before the 'push' request
     happens, and before the local 'merge' happens.
     """
-    closeit = session is None
-    session = session if not closeit else core.Session()
     unversioned = session.query(Operation).\
         filter(Operation.version_id == None).order_by(Operation.order.desc())
     seqs = group_by(lambda op: (op.row_id, op.content_type_id), unversioned)
@@ -137,15 +136,9 @@ def compress(session=None):
                     (operation, model.__name__))
             session.delete(operation)
             continue
-    result = session.query(Operation).\
+    return session.query(Operation).\
         filter(Operation.version_id == None).\
         order_by(Operation.order.asc()).all()
-    if closeit:
-        session.commit()
-        session.close()
-    else:
-        session.flush()
-    return result
 
 
 def compressed_operations(operations):
@@ -187,7 +180,8 @@ def compressed_operations(operations):
     return compressed
 
 
-def unsynched_objects():
+@core.session_committing
+def unsynched_objects(session=None):
     """
     Returns a list of triads (class, id, operation) that represents
     the unsynchronized objects in the tracked database.
@@ -205,8 +199,7 @@ def unsynched_objects():
     Because of compatibility issues, this procedure will only return
     triads for classes marked for both push and pull handling.
     """
-    session = core.Session()
-    ops = compress(session)
+    ops = compress(session=session)
     def getclass(op):
         class_ = op.tracked_model
         if class_ is None: return None
@@ -217,12 +210,10 @@ def unsynched_objects():
         (c, op.row_id, op.command)
         for c, op in ((getclass(op), op) for op in ops)
         if c is not None]
-    session.commit()
-    session.close()
     return triads
 
 
-@core.with_transaction()
+@core.session_committing
 def trim(session=None):
     "Trims the internal synchronization tables, to free space."
     last_id = core.get_latest_version_id(session=session)
