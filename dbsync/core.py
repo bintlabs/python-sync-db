@@ -4,6 +4,7 @@ Common functionality for model synchronization and version tracking.
 
 import zlib
 import inspect
+import contextlib
 import logging
 logging.getLogger('dbsync').addHandler(logging.NullHandler())
 
@@ -29,6 +30,56 @@ def Session():
     s._model_changes = dict() # for flask-sqlalchemy
     setattr(s, INTERNAL_SESSION_ATTR, True) # used to disable listeners
     return s
+
+
+def session_closing(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        closeit = kwargs.get('session', None) is None
+        session = Session() if closeit else kwargs['session']
+        kwargs['session'] = session
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            if closeit:
+                session.close()
+    return wrapped
+
+
+def session_committing(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        closeit = kwargs.get('session', None) is None
+        session = Session() if closeit else kwargs['session']
+        kwargs['session'] = session
+        try:
+            result = fn(*args, **kwargs)
+            if closeit:
+                session.commit()
+            else:
+                session.flush()
+            return result
+        except:
+            if closeit:
+                session.rollback()
+            raise
+        finally:
+            if closeit:
+                session.close()
+    return wrapped
+
+
+@contextlib.contextmanager
+def committing_context():
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 #: The internal use mode, used to prevent client-server module
@@ -172,8 +223,6 @@ def toggle_listening(enabled=None):
     """
     global listening
     listening = enabled if enabled is not None else not listening
-    if not listening:
-        logger.warning("dbsync is disabled; listening is set to False")
 
 
 def with_listening(enabled):
@@ -227,8 +276,7 @@ def with_transaction(include_extensions=True):
     def wrapper(proc):
         @wraps(proc)
         def wrapped(*args, **kwargs):
-            extensions = kwargs.pop('include_extensions',
-                                    include_extensions)
+            extensions = kwargs.pop('include_extensions', include_extensions)
             session = Session()
             previous_state = dialects.begin_transaction(session)
             added = []
@@ -265,14 +313,14 @@ def with_transaction(include_extensions=True):
     return wrapper
 
 
-def generate_content_types():
+@session_committing
+def generate_content_types(session=None):
     """
     Fills the content type table.
 
     Inserts content types into the internal table used to describe
     operations.
     """
-    session = Session()
     for mname, model in synched_models.iteritems():
         tname = model.__table__.name
         content_type_id = zlib.crc32("{0}/{1}".format(mname, tname), 0) \
@@ -282,11 +330,10 @@ def generate_content_types():
             session.add(ContentType(table_name=tname,
                                     model_name=mname,
                                     content_type_id=content_type_id))
-    session.commit()
-    session.close()
 
 
-def is_synched(obj):
+@session_closing
+def is_synched(obj, session=None):
     """
     Returns whether the given tracked object is synched.
 
@@ -304,21 +351,16 @@ def is_synched(obj):
         filter(Operation.content_type_id == ct.content_type_id,
                Operation.row_id == getattr(obj, get_pk(obj))).\
                order_by(Operation.order.desc()).first()
-    result = last_op is None or last_op.version_id is not None
-    session.close()
-    return result
+    return last_op is None or last_op.version_id is not None
 
 
+@session_closing
 def get_latest_version_id(session=None):
     """
     Returns the latest version identifier or ``None`` if no version is
     found.
     """
-    closeit = session is None
-    session = Session() if closeit else session
     # assuming version identifiers grow monotonically
     # might need to order by 'created' datetime field
     version = session.query(Version).order_by(Version.version_id.desc()).first()
-    if closeit:
-        session.close()
     return maybe(version, attr('version_id'), None)

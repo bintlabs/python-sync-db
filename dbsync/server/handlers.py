@@ -44,7 +44,8 @@ from dbsync.logs import get_logger
 logger = get_logger(__name__)
 
 
-def handle_query(data):
+@core.session_closing
+def handle_query(data, session=None):
     "Responds to a query request."
     model = core.synched_models.get(data.get('model', None), None)
     if model is None: return None
@@ -53,29 +54,26 @@ def handle_query(data):
                                        for k, v in data.iteritems()
                                        if k.startswith(mname + '_'))
                    if k and k in column_properties(model))
-    session = core.Session()
     message = BaseMessage()
     q = query_model(session, model)
     if filters:
         q = q.filter_by(**filters)
     for obj in q:
         message.add_object(obj)
-    session.close()
     return message.to_json()
 
 
-def handle_repair(data=None):
+@core.session_closing
+def handle_repair(data=None, session=None):
     "Handle repair request. Return whole server database."
     include_extensions = 'exclude_extensions' not in (data or {})
-    session = core.Session()
-    latest_version_id = core.get_latest_version_id(session)
+    latest_version_id = core.get_latest_version_id(session=session)
     message = BaseMessage()
     for model in core.synched_models.itervalues():
         for obj in query_model(session, model):
             message.add_object(obj, include_extensions=include_extensions)
     response = message.to_json()
     response['latest_version_id'] = latest_version_id
-    session.close()
     return response
 
 
@@ -159,7 +157,7 @@ def handle_push(data, session=None):
         message = PushMessage(data)
     except KeyError:
         raise PushRejected("request object isn't a valid PushMessage", data)
-    latest_version_id = core.get_latest_version_id(session)
+    latest_version_id = core.get_latest_version_id(session=session)
     if latest_version_id != message.latest_version_id:
         exc = "version identifier isn't the latest one; "\
             "given: %s" % message.latest_version_id

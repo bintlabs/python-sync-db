@@ -14,7 +14,7 @@ from dbsync.utils import (
     query_model)
 from dbsync.lang import *
 
-from dbsync.core import Session, synched_models, pushed_models
+from dbsync.core import session_closing, synched_models, pushed_models
 from dbsync.models import Node, Operation
 from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
@@ -159,24 +159,20 @@ class PushMessage(BaseMessage):
             #     self.add_object(parent, include_extensions=include_extensions)
         return self
 
+    @session_closing
     def add_unversioned_operations(self, session=None, include_extensions=True):
         """
         Adds all unversioned operations to this message, including the
         required objects for them to be performed.
         """
-        closeit = session is None
-        session = Session() if closeit else session
         operations = session.query(Operation).\
             filter(Operation.version_id == None).all()
         if any(op.content_type.model_name not in synched_models
                for op in operations):
-            if closeit: session.close()
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
         for op in operations:
             self._add_operation(op, session, include_extensions=include_extensions)
-        if closeit:
-            session.close()
         if self.key is not None:
             # overwrite since it's probably an incorrect key
             self._sign()

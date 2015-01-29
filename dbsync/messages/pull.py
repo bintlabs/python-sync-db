@@ -14,7 +14,7 @@ from dbsync.utils import (
 from dbsync.lang import *
 
 from dbsync.core import (
-    Session,
+    session_closing,
     synched_models,
     pulled_models,
     get_latest_version_id)
@@ -91,6 +91,7 @@ class PullMessage(BaseMessage):
                                   imap(properties_dict, self.versions))
         return encoded
 
+    @session_closing
     def add_operation(self, op, swell=True, session=None):
         """
         Adds an operation to the message, including the required
@@ -118,8 +119,6 @@ class PullMessage(BaseMessage):
                                  "which isn't being tracked" % mname)
         if model not in pulled_models:
             return self
-        closeit = session is None
-        session = session if not closeit else Session()
         obj = query_model(session, model).\
             filter_by(**{get_pk(model): op.row_id}).first() \
             if op.command != 'd' else None
@@ -134,10 +133,9 @@ class PullMessage(BaseMessage):
                 for parent in parent_objects(obj, synched_models.values(),
                                              session):
                     self.add_object(parent)
-        if closeit:
-            session.close()
         return self
 
+    @session_closing
     def add_version(self, v, swell=True, session=None):
         """
         Adds a version to the message, and all associated
@@ -153,20 +151,19 @@ class PullMessage(BaseMessage):
             if op.content_type.model_name not in synched_models:
                 raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked", op)
+
         # if any(op.content_type.model_name not in synched_models
         #        for op in v.operations):
         #     raise ValueError("version includes operation linked "\
         #                          "to model not currently being tracked", bad_op)
-        closeit = session is None
-        session = Session() if closeit else session
         self.versions.append(v)
         for op in v.operations:
             self.add_operation(op, swell=swell, session=session)
-        if closeit:
-            session.close()
         return self
 
-    def fill_for(self, request, swell=False, include_extensions=True):
+    @session_closing
+    def fill_for(self, request, swell=False, include_extensions=True,
+                 session=None):
         """
         Fills this pull message (response) with versions, operations
         and objects, for the given request (PullRequestMessage).
@@ -183,7 +180,6 @@ class PullMessage(BaseMessage):
         include model extensions or not.
         """
         assert isinstance(request, PullRequestMessage), "invalid request"
-        session = Session()
         cts = session.query(ContentType).all()
         versions = session.query(Version)
         if request.latest_version_id is not None:
@@ -195,7 +191,6 @@ class PullMessage(BaseMessage):
                 mname = op.content_type.model_name
                 model = synched_models.get(mname, None)
                 if model is None:
-                    session.close()
                     raise ValueError("operation linked to model %s "\
                                          "which isn't being tracked" % mname)
                 if model not in pulled_models: continue
@@ -215,7 +210,6 @@ class PullMessage(BaseMessage):
                         session.expire(parent) # load all attributes at once
                         self.add_object(
                             parent, include_extensions=include_extensions)
-        session.close()
         return self
 
 
@@ -289,22 +283,18 @@ class PullRequestMessage(BaseMessage):
         self.operations.append(op)
         return self
 
+    @session_closing
     def add_unversioned_operations(self, session=None):
         """
         Adds all unversioned operations to this message and
         required objects.
         """
-        closeit = session is None
-        session = Session() if closeit else session
         operations = session.query(Operation).\
             filter(Operation.version_id == None).all()
         if any(op.content_type.model_name not in synched_models
                for op in operations):
-            if closeit: session.close()
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
         for op in operations:
             self.add_operation(op)
-        if closeit:
-            session.close()
         return self

@@ -119,7 +119,7 @@ def merge(pull_message, session=None):
     content_types = session.query(ContentType).all()
     valid_cts = set(ct.content_type_id for ct in content_types)
 
-    unversioned_ops = compress(session)
+    unversioned_ops = compress(session=session)
     pull_ops = filter(attr('content_type_id').in_(valid_cts),
                       pull_message.operations)
     pull_ops = compressed_operations(pull_ops)

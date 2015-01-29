@@ -28,8 +28,8 @@ def request_push(push_url,
                  extensions=True,
                  session=None):
     message = PushMessage()
-    message.latest_version_id = core.get_latest_version_id(session)
-    compress(session)
+    message.latest_version_id = core.get_latest_version_id(session=session)
+    compress(session=session)
     message.add_unversioned_operations(
         session=session, include_extensions=extensions)
     message.set_node(session.query(Node).order_by(Node.node_id.desc()).first())
