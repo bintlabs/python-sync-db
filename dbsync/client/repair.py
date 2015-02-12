@@ -34,9 +34,14 @@ def repair_database(message, latest_version_id, session=None):
     session.query(Version).delete(synchronize_session=False)
     session.expire_all()
     # load the fetched database
+    obj_count = 0
+    batch_size = 500
     for modelkey in core.synched_models:
         for obj in message.query(modelkey):
             session.add(obj)
+            obj_count += 1
+            if obj_count % batch_size == 0:
+                session.flush()
     # load the new version, if any
     if latest_version_id is not None:
         session.add(Version(version_id=latest_version_id))
