@@ -14,7 +14,11 @@ from dbsync.utils import (
     query_model)
 from dbsync.lang import *
 
-from dbsync.core import session_closing, synched_models, pushed_models
+from dbsync.core import (
+    MAX_SQL_VARIABLES,
+    session_closing,
+    synched_models,
+    pushed_models)
 from dbsync.models import Node, Operation
 from dbsync.messages.base import MessageQuery, BaseMessage
 from dbsync.messages.codecs import encode, encode_dict, decode, decode_dict
@@ -139,26 +143,6 @@ class PushMessage(BaseMessage):
         return node is not None and \
             self.key == hashlib.sha512(node.secret + self._portion()).hexdigest()
 
-    def _add_operation(self, op, session, include_extensions=True):
-        mname = op.content_type.model_name
-        model = synched_models.get(mname, None)
-        if model is None:
-            raise ValueError("operation linked to model %s "\
-                                 "which isn't being tracked" % mname)
-        if model not in pushed_models: return self
-        obj = query_model(session, model).\
-            filter_by(**{get_pk(model): op.row_id}).first() \
-            if op.command != 'd' else None
-        self.operations.append(op)
-        if obj is not None:
-            self.add_object(obj, include_extensions=include_extensions)
-            # parent objects aren't added, because the merge (and it's
-            # conflicts) ocurr solely on the pull operation
-
-            # for parent in parent_objects(obj, synched_models.values(), session):
-            #     self.add_object(parent, include_extensions=include_extensions)
-        return self
-
     @session_closing
     def add_unversioned_operations(self, session=None, include_extensions=True):
         """
@@ -171,8 +155,22 @@ class PushMessage(BaseMessage):
                for op in operations):
             raise ValueError("version includes operation linked "\
                                  "to model not currently being tracked")
+        required_objects = {}
         for op in operations:
-            self._add_operation(op, session, include_extensions=include_extensions)
+            mname = op.content_type.model_name
+            model = synched_models.get(mname)
+            if model not in pushed_models: continue
+            self.operations.append(op)
+            if op.command != 'd':
+                pks = required_objects.get(model, set())
+                pks.add(op.row_id)
+                required_objects[model] = pks
+        for model, pks in ((m, batch)
+                           for m, pks in required_objects.iteritems()
+                           for batch in grouper(pks, MAX_SQL_VARIABLES)):
+            for obj in query_model(session, model).filter(
+                    getattr(model, get_pk(model)).in_(list(pks))).all():
+                self.add_object(obj, include_extensions=include_extensions)
         if self.key is not None:
             # overwrite since it's probably an incorrect key
             self._sign()

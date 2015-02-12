@@ -9,11 +9,13 @@ from dbsync.utils import (
     properties_dict,
     object_from_dict,
     get_pk,
+    parent_references,
     parent_objects,
     query_model)
 from dbsync.lang import *
 
 from dbsync.core import (
+    MAX_SQL_VARIABLES,
     session_closing,
     synched_models,
     pulled_models,
@@ -168,13 +170,9 @@ class PullMessage(BaseMessage):
         Fills this pull message (response) with versions, operations
         and objects, for the given request (PullRequestMessage).
 
-        Ideally, this method of filling the PullMessage will avoid
-        bloating it with parent objects when these aren't required by
-        the client node. This effectively means detecting the
-        'reversed_dependency_conflicts'
-        (:func:`client.conflicts.find_reversed_dependency_conflicts`)
-        on the server. This 'smart filling' is disabled if *swell* is
-        ``True``.
+        The *swell* parameter is deprecated and considered ``True``
+        regardless of the value given. This means that parent objects
+        will always be added to the message.
 
         *include_extensions* dictates whether the pull message will
         include model extensions or not.
@@ -185,6 +183,8 @@ class PullMessage(BaseMessage):
         if request.latest_version_id is not None:
             versions = versions.\
                 filter(Version.version_id > request.latest_version_id)
+        required_objects = {}
+        required_parents = {}
         for v in versions:
             self.versions.append(v)
             for op in v.operations:
@@ -194,22 +194,31 @@ class PullMessage(BaseMessage):
                     raise ValueError("operation linked to model %s "\
                                          "which isn't being tracked" % mname)
                 if model not in pulled_models: continue
-                obj = query_model(session, model).\
-                    filter_by(**{get_pk(model): op.row_id}).first() \
-                    if op.command != 'd' else None
                 self.operations.append(op)
-                if obj is None: continue
+                if op.command != 'd':
+                    pks = required_objects.get(model, set())
+                    pks.add(op.row_id)
+                    required_objects[model] = pks
+
+        for model, pks in ((m, batch)
+                           for m, pks in required_objects.iteritems()
+                           for batch in grouper(pks, MAX_SQL_VARIABLES)):
+            for obj in query_model(session, model).filter(
+                    getattr(model, get_pk(model)).in_(list(pks))).all():
                 self.add_object(obj, include_extensions=include_extensions)
                 # add parent objects to resolve conflicts in merge
-                for parent in parent_objects(obj, synched_models.values(),
-                                             session, only_pk=True):
-                    if swell or \
-                            any(local_op.references(parent, cts, synched_models)
-                                for local_op in request.operations
-                                if local_op.command == 'd'):
-                        session.expire(parent) # load all attributes at once
-                        self.add_object(
-                            parent, include_extensions=include_extensions)
+                for pmodel, ppk in parent_references(obj,
+                                                     synched_models.values()):
+                    parent_pks = required_parents.get(pmodel, set())
+                    parent_pks.add(ppk)
+                    required_parents[pmodel] = parent_pks
+
+        for pmodel, ppks in ((m, batch)
+                             for m, pks in required_parents.iteritems()
+                             for batch in grouper(pks, MAX_SQL_VARIABLES)):
+            for parent in query_model(session, pmodel).filter(
+                    getattr(pmodel, get_pk(pmodel)).in_(list(ppks))).all():
+                self.add_object(parent, include_extensions=include_extensions)
         return self
 
 

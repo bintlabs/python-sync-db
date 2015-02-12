@@ -84,14 +84,10 @@ def get_pk(sa_variant):
     return mapper.primary_key[0].key
 
 
-def parent_objects(sa_object, models, session, only_pk=False):
+def parent_references(sa_object, models):
     """
-    Returns all the parent objects the given *sa_object* points to
-    (through foreign keys in *sa_object*).
-
-    *models* is a list of mapped classes.
-
-    *session* must be a valid SA session instance.
+    Returns a list of pairs (*sa_class*, *pk*) that reference all the
+    parent objects of *sa_object*.
     """
     mapper = object_mapper(sa_object)
     references = [(getattr(sa_object, k.parent.name), k.column.table)
@@ -101,12 +97,24 @@ def parent_objects(sa_object, models, session, only_pk=False):
             if class_mapper(m).mapped_table == table:
                 return m
         return None
+    return [(m, pk)
+            for m, pk in ((get_model(table), v) for v, table in references)
+            if m is not None]
+
+
+def parent_objects(sa_object, models, session, only_pk=False):
+    """
+    Returns all the parent objects the given *sa_object* points to
+    (through foreign keys in *sa_object*).
+
+    *models* is a list of mapped classes.
+
+    *session* must be a valid SA session instance.
+    """
     return filter(lambda obj: obj is not None,
                   (query_model(session, m, only_pk=only_pk).\
                        filter_by(**{get_pk(m): val}).first()
-                   for val, m in ((v, get_model(table))
-                                  for v, table in references)
-                   if m is not None))
+                   for m, val in parent_references(sa_object, models)))
 
 
 def query_model(session, sa_class, only_pk=False):

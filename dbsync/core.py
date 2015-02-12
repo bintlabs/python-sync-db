@@ -21,6 +21,10 @@ from dbsync.logs import get_logger
 logger = get_logger(__name__)
 
 
+#: Approximate maximum number of variables allowed in a query
+MAX_SQL_VARIABLES = 900
+
+
 INTERNAL_SESSION_ATTR = '_dbsync_internal'
 
 
