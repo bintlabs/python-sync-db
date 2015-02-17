@@ -7,9 +7,10 @@ from dbsync import core
 from dbsync.models import Node, Version, Operation
 
 
-@core.with_transaction()
+@core.session_committing
 def trim(session=None):
-    """Clears space by deleting operations and versions that are no
+    """
+    Clears space by deleting operations and versions that are no
     longer needed.
 
     This might cause the server to answer incorrectly to pull requests
@@ -19,7 +20,8 @@ def trim(session=None):
     Another problem with this procedure is that it won't clear space
     if there's at least one abandoned node registered. The task of
     keeping the nodes registry clean of those is left to the
-    programmer."""
+    programmer.
+    """
     versions = [maybe(session.query(Version).\
                           filter(Version.node_id == node.node_id).\
                           order_by(Version.version_id.desc()).first(),

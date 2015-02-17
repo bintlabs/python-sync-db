@@ -7,7 +7,7 @@ import dbsync
 from dbsync import server
 
 
-engine = create_engine("mysql://root:11235813@localhost/dbsync_apptest", echo=True)
+engine = create_engine("sqlite:///server.db", echo=True)
 Session = sessionmaker(bind=engine)
 
 

@@ -2,7 +2,7 @@
 Generic functions for repeating patterns.
 """
 
-from itertools import imap, ifilter, izip
+from itertools import imap, ifilter, izip, izip_longest
 from functools import partial as partial_apply, wraps
 
 
@@ -114,6 +114,24 @@ def group_by(fn, col):
         else:
             subcol.append(e)
     return groups
+
+
+def grouper(iterable, n):
+    """
+    Collect data into chunks or blocks of at most *n* elements.
+    """
+    assert n > 0, "n must be greater than 0"
+    count = 0
+    accum = []
+    for e in iterable:
+        accum.append(e)
+        count += 1
+        if count == n:
+            yield tuple(accum)
+            count = 0
+            del accum[:]
+    if accum:
+        yield tuple(accum)
 
 
 def lookup(predicate, collection, default=None):
