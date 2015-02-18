@@ -3,6 +3,10 @@
    :synopsis: DBMS-dependent statements.
 """
 
+from sqlalchemy import func
+
+from dbsync.utils import class_mapper, get_pk
+
 
 def begin_transaction(session):
     """
@@ -35,3 +39,20 @@ def end_transaction(state, session):
     if dialect == 'sqlite':
         if state not in (0, 1): state = 1
         engine.execute("PRAGMA foreign_keys = {0}".format(int(state)))
+
+
+def max_local(sa_class, session):
+    """
+    Returns the maximum primary key used for the given table.
+    """
+    engine = session.bind
+    dialect = engine.name
+    table_name = class_mapper(sa_class).mapped_table.name
+    if dialect == 'sqlite':
+        cursor = engine.execute("SELECT seq FROM sqlite_sequence WHERE name = ?",
+                                table_name)
+        result = cursor.fetchone()[0]
+        cursor.close()
+        return result
+    # default, strictly incorrect query
+    return session.query(func.max(getattr(sa_class, get_pk(sa_class)))).scalar()

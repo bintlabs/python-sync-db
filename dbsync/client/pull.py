@@ -4,12 +4,12 @@ Pull, merge and related operations.
 
 import collections
 
-from sqlalchemy import func
 from sqlalchemy.orm import make_transient
 
 from dbsync.lang import *
 from dbsync.utils import class_mapper, get_pk, query_model
 from dbsync import core
+from dbsync import dialects
 from dbsync.models import ContentType, Operation
 from dbsync.messages.pull import PullMessage, PullRequestMessage
 from dbsync.client.compression import compress, compressed_operations
@@ -34,7 +34,7 @@ def max_local(ct, session):
     model = core.synched_models.get(ct.model_name)
     if model is None:
         raise ValueError("can't find model for content type {0}".format(ct))
-    return session.query(func.max(getattr(model, get_pk(model)))).scalar()
+    return dialects.max_local(model, session)
 
 
 def max_remote(ct, container):
