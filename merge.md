@@ -344,16 +344,41 @@ one-step swap, on a single constrained attribute. Multiple-step swaps
 also variations to consider.
 
 Not every case of unique constraint violation is caused by dbsync,
-however. It's also possible that two insert or update operations,
+however. It’s also possible that two insert or update operations,
 registered by different nodes, collide on such a constraint without it
-being a consequence of dbsync's poor logging. These cases happen
-because the constraint is checked locally by the database management
-system or engine, and not against the synchronization server. Dbsync
-detects these as well, and interrupts the merge subroutine with a
-specialized exception that contains required details for the end user
-to resolve it.
+being a consequence of poor logging. These cases happen because the
+constraint is checked locally by the database management system or
+engine, and not against the synchronization server. Dbsync detects
+these as well, and interrupts the merge subroutine with a specialized
+exception that contains required details for the end user to resolve
+it.
 
-TODO define unique constraint resolution.
+To detect unique constraint conflicts, dbsync uses SQLAlchemy’s schema
+inspection API to iterate over the unique constraints defined in
+tables referenced by operations in the message. For each constraint
+found for each operation, a local object that matches the constraining
+values in the server-sent object is looked up. If found, the local
+object is further inspected to detect whether the case is a solvable
+conflict or a user error.
+
+A solvable conflict is determined by the presence of another version
+of the conflicting local object in the message (a third object, in the
+message, that has the same primary key value as the local conflicting
+object). This indicates that an update swap exists in the server-sent
+state difference, and the three objects form a single step of it. The
+conflicting objects are all collected and this way, multiple-step
+swaps are detected in increments. The collection of conflicting
+objects is finally deleted and immediately inserted with their final
+state, thus resolving the conflict. This method of resolution was
+found to be applicable in many different DBMSs, although it required
+the temporal desactivation of foreign key cascades, as they could
+trigger unexpected changes to the database.
+
+An unsolvable conflict is determined by the absence of the local
+conflicting object in the server-sent message. This means that
+operations from both devices collide, but do so exclusively in a
+pair. Detecting conflicts of this kind causes the interruption of the
+merge subroutine.
 
 Findings
 --------

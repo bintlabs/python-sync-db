@@ -13,6 +13,10 @@ from dbsync.models import Base
 from dbsync.logs import set_log_target
 
 
+__version_info__ = (0, 7, 0)
+__version__ = '.'.join(str(n) for n in __version_info__)
+
+
 def create_all():
     "Issues DDL commands."
     Base.metadata.create_all(get_engine())

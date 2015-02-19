@@ -1,7 +1,8 @@
 from distutils.core import setup
+import dbsync
 
 setup(name='dbsync',
-      version='0.6.0',
+      version=dbsync.__version__,
       url='https://github.com/bintlabs/python-sync-db',
       author='Bint',
       packages=['dbsync', 'dbsync.client', 'dbsync.server', 'dbsync.messages'],
