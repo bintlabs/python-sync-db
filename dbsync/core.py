@@ -12,8 +12,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 
 from dbsync.lang import *
-from dbsync.utils import get_pk, query_model, copy
-from dbsync.models import Operation, Version
+from dbsync.utils import get_pk, query_model, copy, class_mapper
+from dbsync.models import ContentType, Operation, Version
 from dbsync import dialects
 from dbsync.logs import get_logger
 
@@ -363,19 +363,22 @@ def make_content_type_id(model):
     return zlib.crc32("{0}/{1}".format(mname, tname), 0) & 0xffffffff
 
 
-def generate_content_types():
+@session_committing
+def generate_content_types(session=None):
     """
     Fills the content type table.
 
     Inserts content types into the internal table used to describe
     operations.
-
-    DEPRECATED since ContentType was removed.
     """
-    logger.warning("content types no longer live in database")
-    logger.warning("in-memory content_type_ids:\n{0}".format(
-            "\n".join("{0} :\t{1}".format(ct_id, record.model.__name__)
-                      for ct_id, record in synched_models.ids.iteritems())))
+    for tname, record in synched_models.tables.iteritems():
+        content_type_id = record.id
+        mname = record.model.__name__
+        if session.query(ContentType).\
+                filter(ContentType.table_name == tname).count() == 0:
+            session.add(ContentType(table_name=tname,
+                                    model_name=mname,
+                                    content_type_id=content_type_id))
 
 
 @session_closing

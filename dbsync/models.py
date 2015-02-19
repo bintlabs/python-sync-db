@@ -29,6 +29,20 @@ class PrefixTables(DeclarativeMeta):
 Base = declarative_base(metaclass=PrefixTables)
 
 
+class ContentType(Base):
+    "A weak abstraction over a database table."
+
+    __tablename__ = "content_types"
+
+    content_type_id = Column(BigInteger, primary_key=True)
+    table_name = Column(String(500))
+    model_name = Column(String(500))
+
+    def __repr__(self):
+        return u"<ContentType id: {0}, table_name: {1}, model_name: {2}>".\
+            format(self.content_type_id, self.table_name, self.model_name)
+
+
 class Node(Base):
     """
     A node registry.
