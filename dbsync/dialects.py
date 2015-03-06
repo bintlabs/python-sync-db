@@ -48,11 +48,12 @@ def max_local(sa_class, session):
     engine = session.bind
     dialect = engine.name
     table_name = class_mapper(sa_class).mapped_table.name
+    # default, strictly incorrect query
+    found = session.query(func.max(getattr(sa_class, get_pk(sa_class)))).scalar()
     if dialect == 'sqlite':
         cursor = engine.execute("SELECT seq FROM sqlite_sequence WHERE name = ?",
                                 table_name)
         result = cursor.fetchone()[0]
         cursor.close()
-        return result
-    # default, strictly incorrect query
-    return session.query(func.max(getattr(sa_class, get_pk(sa_class)))).scalar()
+        return max(result, found)
+    return found
