@@ -27,6 +27,10 @@ def begin_transaction(session):
         # see http://dev.mysql.com/doc/refman/5.7/en/using-system-variables.html
         engine.execute("SET foreign_key_checks = 0;")
         return None
+    if dialect == 'postgresql':
+        # defer constraints
+        engine.execute("SET CONSTRAINTS ALL DEFERRED;")
+        return None
     return None
 
 
