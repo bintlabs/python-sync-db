@@ -197,9 +197,9 @@ def handle_push(data, session=None):
     session.flush()
 
     # II) perform the operations
+    operations = filter(lambda o: o.tracked_model is not None, message.operations)
     try:
-        for op in ifilter(lambda o: o.tracked_model is not None,
-                          message.operations):
+        for op in operations:
             op.perform(message, session, message.node_id)
     except OperationError as e:
         logger.exception(u"Couldn't perform operation in push from node %s.",
@@ -212,7 +212,7 @@ def handle_push(data, session=None):
     session.add(version)
 
     # IV) insert the operations, discarding the 'order' column
-    for op in sorted(message.operations, key=attr('order')):
+    for op in sorted(operations, key=attr('order')):
         new_op = Operation()
         for k in ifilter(lambda k: k != 'order', properties_dict(op)):
             setattr(new_op, k, getattr(op, k))
