@@ -198,7 +198,8 @@ def handle_push(data, session=None):
 
     # II) perform the operations
     try:
-        for op in message.operations:
+        for op in ifilter(lambda o: o.tracked_model is not None,
+                          message.operations):
             op.perform(message, session, message.node_id)
     except OperationError as e:
         logger.exception(u"Couldn't perform operation in push from node %s.",
